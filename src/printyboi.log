@@ -1,0 +1,96 @@
+2021-02-05 23:01:56,913 - INFO - loading the model
+2021-02-05 23:02:09,716 - INFO - fitting the model
+2021-02-05 23:11:27,207 - INFO - build_posterior_wrapper took 0.006675 seconds
+2021-02-05 23:11:27,209 - INFO - TPE using 0 trials
+2021-02-05 23:11:27,701 - ERROR - job exception: API request to endpoint /api/2.0/mlflow/runs/create failed with error code 401 != 200. Response body: '<html>
+<head><title>401 Authorization Required</title></head>
+<body>
+<center><h1>401 Authorization Required</h1></center>
+<hr><center>nginx/1.17.8</center>
+</body>
+</html>
+'
+2021-02-05 23:12:29,138 - INFO - build_posterior_wrapper took 0.004100 seconds
+2021-02-05 23:12:29,139 - INFO - TPE using 0 trials
+2021-02-05 23:12:29,267 - ERROR - job exception: API request to endpoint /api/2.0/mlflow/runs/create failed with error code 401 != 200. Response body: '<html>
+<head><title>401 Authorization Required</title></head>
+<body>
+<center><h1>401 Authorization Required</h1></center>
+<hr><center>nginx/1.17.8</center>
+</body>
+</html>
+'
+2021-02-05 23:14:09,187 - INFO - build_posterior_wrapper took 0.004793 seconds
+2021-02-05 23:14:09,188 - INFO - TPE using 0 trials
+2021-02-05 23:14:09,340 - ERROR - job exception: API request to endpoint /api/2.0/mlflow/runs/create failed with error code 401 != 200. Response body: '<html>
+<head><title>401 Authorization Required</title></head>
+<body>
+<center><h1>401 Authorization Required</h1></center>
+<hr><center>nginx/1.17.8</center>
+</body>
+</html>
+'
+2021-02-05 23:14:31,962 - INFO - loading the model
+2021-02-05 23:14:32,303 - INFO - fitting the model
+2021-02-05 23:14:36,438 - INFO - build_posterior_wrapper took 0.006219 seconds
+2021-02-05 23:14:36,439 - INFO - TPE using 0 trials
+2021-02-05 23:14:36,667 - ERROR - job exception: API request to endpoint /api/2.0/mlflow/runs/create failed with error code 401 != 200. Response body: '<html>
+<head><title>401 Authorization Required</title></head>
+<body>
+<center><h1>401 Authorization Required</h1></center>
+<hr><center>nginx/1.17.8</center>
+</body>
+</html>
+'
+2021-02-05 23:16:38,280 - INFO - loading the model
+2021-02-05 23:16:38,554 - INFO - fitting the model
+2021-02-05 23:16:45,480 - INFO - loading the model
+2021-02-05 23:16:45,842 - INFO - fitting the model
+2021-02-05 23:16:48,614 - INFO - build_posterior_wrapper took 0.004912 seconds
+2021-02-05 23:16:48,616 - INFO - TPE using 0 trials
+2021-02-05 23:16:49,186 - ERROR - job exception: RESOURCE_DOES_NOT_EXIST: No Experiment with id=4 exists
+2021-02-05 23:18:19,908 - INFO - build_posterior_wrapper took 0.003869 seconds
+2021-02-05 23:18:19,909 - INFO - TPE using 0 trials
+2021-02-05 23:18:19,958 - ERROR - job exception: [23:12:49] /Users/travis/build/dmlc/xgboost/src/objective/objective.cc:26: Unknown objective function: `<function weibull_timevaryingcov_continuous_obj at 0x141508ee0>`
+Objective candidate: survival:aft
+Objective candidate: binary:hinge
+Objective candidate: multi:softmax
+Objective candidate: multi:softprob
+Objective candidate: rank:pairwise
+Objective candidate: rank:ndcg
+Objective candidate: rank:map
+Objective candidate: reg:squarederror
+Objective candidate: reg:squaredlogerror
+Objective candidate: reg:logistic
+Objective candidate: reg:pseudohubererror
+Objective candidate: binary:logistic
+Objective candidate: binary:logitraw
+Objective candidate: reg:linear
+Objective candidate: count:poisson
+Objective candidate: survival:cox
+Objective candidate: reg:gamma
+Objective candidate: reg:tweedie
+
+Stack trace:
+  [bt] (0) 1   libxgboost.dylib                    0x000000014110c160 dmlc::LogMessageFatal::~LogMessageFatal() + 112
+  [bt] (1) 2   libxgboost.dylib                    0x000000014120033a xgboost::ObjFunction::Create(std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> > const&, xgboost::GenericParameter const*) + 778
+  [bt] (2) 3   libxgboost.dylib                    0x00000001411c3032 xgboost::LearnerConfiguration::ConfigureObjective(xgboost::LearnerTrainParam const&, std::__1::vector<std::__1::pair<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> >, std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> > >, std::__1::allocator<std::__1::pair<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> >, std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> > > > >*) + 2082
+  [bt] (3) 4   libxgboost.dylib                    0x00000001411b7468 xgboost::LearnerConfiguration::Configure() + 1416
+  [bt] (4) 5   libxgboost.dylib                    0x00000001411b7968 xgboost::LearnerImpl::UpdateOneIter(int, std::__1::shared_ptr<xgboost::DMatrix>) + 120
+  [bt] (5) 6   libxgboost.dylib                    0x00000001411018cc XGBoosterUpdateOneIter + 156
+  [bt] (6) 7   _ctypes.cpython-39-darwin.so        0x0000000111a0f927 ffi_call_unix64 + 79
+  [bt] (7) 8   ???                                 0x00007ffee0019760 0x0 + 140732656621408
+
+
+2021-02-05 23:31:58,061 - INFO - build_posterior_wrapper took 0.004706 seconds
+2021-02-05 23:31:58,063 - INFO - TPE using 0 trials
+2021-02-05 23:31:58,115 - ERROR - job exception: [23:26:28] /Users/travis/build/dmlc/xgboost/src/objective/regression_obj.cu:57: Check failed: preds.Size() == info.labels_.Size() (8452 vs. 0) :  labels are not correctly providedpreds.size=8452, label.size=0, Loss: reg:squarederror
+Stack trace:
+  [bt] (0) 1   libxgboost.dylib                    0x000000014110c160 dmlc::LogMessageFatal::~LogMessageFatal() + 112
+  [bt] (1) 2   libxgboost.dylib                    0x000000014120a58f xgboost::obj::RegLossObj<xgboost::obj::LinearSquareLoss>::GetGradient(xgboost::HostDeviceVector<float> const&, xgboost::MetaInfo const&, int, xgboost::HostDeviceVector<xgboost::detail::GradientPairInternal<float> >*) + 447
+  [bt] (2) 3   libxgboost.dylib                    0x00000001411b7b88 xgboost::LearnerImpl::UpdateOneIter(int, std::__1::shared_ptr<xgboost::DMatrix>) + 664
+  [bt] (3) 4   libxgboost.dylib                    0x00000001411018cc XGBoosterUpdateOneIter + 156
+  [bt] (4) 5   _ctypes.cpython-39-darwin.so        0x0000000111a0f927 ffi_call_unix64 + 79
+  [bt] (5) 6   ???                                 0x00007ffee0019760 0x0 + 140732656621408
+
+

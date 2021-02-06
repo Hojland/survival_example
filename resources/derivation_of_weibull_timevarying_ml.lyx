@@ -1,0 +1,1212 @@
+#LyX 2.3 created this file. For more info see http://www.lyx.org/
+\lyxformat 544
+\begin_document
+\begin_header
+\save_transient_properties true
+\origin unavailable
+\textclass article
+\use_default_options true
+\maintain_unincluded_children false
+\language english
+\language_package default
+\inputencoding auto
+\fontencoding global
+\font_roman "default" "default"
+\font_sans "default" "default"
+\font_typewriter "default" "default"
+\font_math "auto" "auto"
+\font_default_family default
+\use_non_tex_fonts false
+\font_sc false
+\font_osf false
+\font_sf_scale 100 100
+\font_tt_scale 100 100
+\use_microtype false
+\use_dash_ligatures true
+\graphics default
+\default_output_format default
+\output_sync 0
+\bibtex_command default
+\index_command default
+\paperfontsize default
+\use_hyperref false
+\papersize default
+\use_geometry false
+\use_package amsmath 1
+\use_package amssymb 1
+\use_package cancel 1
+\use_package esint 1
+\use_package mathdots 1
+\use_package mathtools 1
+\use_package mhchem 1
+\use_package stackrel 1
+\use_package stmaryrd 1
+\use_package undertilde 1
+\cite_engine basic
+\cite_engine_type default
+\use_bibtopic false
+\use_indices false
+\paperorientation portrait
+\suppress_date false
+\justification true
+\use_refstyle 1
+\use_minted 0
+\index Index
+\shortcut idx
+\color #008000
+\end_index
+\secnumdepth 3
+\tocdepth 3
+\paragraph_separation indent
+\paragraph_indentation default
+\is_math_indent 0
+\math_numbering_side default
+\quotes_style english
+\dynamic_quotes 0
+\papercolumns 1
+\papersides 1
+\paperpagestyle default
+\tracking_changes false
+\output_changes false
+\html_math_output 0
+\html_css_as_file 0
+\html_be_strict false
+\end_header
+
+\begin_body
+
+\begin_layout Title
+Derivation of the log-likelihood function on prediction survival times with
+ weibull hazard rate, and the parameters of the weibull distribution being
+ dependent on time-varying covariates.
+\end_layout
+
+\begin_layout Section
+Continuous case log-likelihood with static variables
+\end_layout
+
+\begin_layout Standard
+We first use the weibull function as hazard rate, and make the parameters
+ dependent on data
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+\lambda(t)=\frac{\beta}{\alpha}\left(\frac{t}{\alpha}\right)^{\beta-1}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+For right-censored data points, we have the following likelihood function:
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+L(t,\theta)\propto\begin{cases}
+\text{P}(T=t|\theta) & \text{if uncensored}\\
+\text{P}(T>t|\theta) & \text{if right censored}
+\end{cases}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+With 
+\begin_inset Formula $\theta=\left[\begin{array}{c}
+\alpha\\
+\beta
+\end{array}\right]$
+\end_inset
+
+ .
+\end_layout
+
+\begin_layout Standard
+And now when censoring time is 
+\begin_inset Formula $C$
+\end_inset
+
+ and we have 
+\begin_inset Formula $Y=\text{min}(T,C)$
+\end_inset
+
+, with 
+\begin_inset Formula $T$
+\end_inset
+
+ a waiting time, and we have 
+\begin_inset Formula $\delta=I(T\leq C)$
+\end_inset
+
+.
+ 
+\end_layout
+
+\begin_layout Standard
+From the weibull distribution we have the following distributional properties
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+f(t)=\frac{\beta}{\alpha}\left(\frac{t}{\alpha}\right)^{\beta-1}e^{-\left(\frac{t}{\alpha}\right)^{\beta}}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+F(t)=1-e^{-\left(\frac{t}{\alpha}\right)^{\beta}}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+\Lambda(t)=\left(\frac{t}{\alpha}\right)^{\beta}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+S(t)=1-F(t)=e^{-\left(\frac{t}{\alpha}\right)^{\beta}}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+\lambda(t)=\frac{\beta}{\alpha}\left(\frac{t}{\alpha}\right)^{\beta-1}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+And since we here by definition have 
+\begin_inset Formula $P(T=t|\theta)=f(t)$
+\end_inset
+
+ and 
+\begin_inset Formula $\text{P}(T>t|\theta)=S(t)$
+\end_inset
+
+, then we in the continious case without time-varying covariates can rewrite
+ the log-likelihood as
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\begin{align*}
+\text{log}(L_{i}) & =\text{log}\left[f(t)^{\delta}\cdot S(t)^{1-\delta}\right]\\
+ & =\text{log}\left[\lambda(t)^{\delta}\cdot e^{-\delta\left(\frac{t}{\alpha}\right)^{\beta}}\cdot S(t)^{1-\delta}\right]\\
+ & =\text{log}\left[\lambda(t)^{\delta}\cdot e^{-\delta\Lambda(t)}\cdot e^{-(1-\delta)\Lambda(t)}\right]\\
+ & =\text{log}\left[\lambda(t)^{\delta}\right]-\Lambda(t)\\
+ & =\delta\cdot\text{log}\left[\lambda(t)\right]-\Lambda(t)\\
+ & =\delta\cdot\text{log}\left[\frac{\beta}{\alpha}\left(\frac{t}{\alpha}\right)^{\beta-1}\right]-\left(\frac{t}{\alpha}\right)^{\beta}\\
+ & =\delta\cdot\text{log}\left[\beta\alpha^{-\beta}t^{\beta-1}\right]-\left(\frac{t}{\alpha}\right)^{\beta}\\
+ & =\delta\cdot\left[(\beta-1)\cdot\text{log}(t)+\text{log}(\beta)-\beta\text{log}(\alpha)\right]-\left(\frac{t}{\alpha}\right)^{\beta}\\
+ & \propto\delta\cdot\left[\beta\cdot\left[\text{log}(t)-\text{log}(\alpha)\right]+\text{log}(\beta)\right]-\left(\frac{t}{\alpha}\right)^{\beta}\\
+ & =\delta\cdot\left[\beta\cdot\text{log}\left[\frac{t}{\alpha}\right]+\text{log}(\beta)\right]-\left(\frac{t}{\alpha}\right)^{\beta}
+\end{align*}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+Discrete case log-likelihood with static variables
+\end_layout
+
+\begin_layout Standard
+In the discrete distribution, this now becomes:
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\begin{align*}
+\text{log}(L_{i}) & =\text{log}\left[f(t_{t})^{\delta}\cdot S(t_{t})^{1-\delta}\right]\\
+ & \text{maybe adding on here?}\\
+ & =\delta\cdot\text{log}\left[e^{d(t)}-1\right]-\Lambda(t+1)\\
+ & =\delta\cdot\text{log}\left[e^{\alpha^{-\beta}\left(\left(t+1\right)^{\beta}-t^{\beta}\right)}-1\right]-\alpha^{-\beta}(t+1)^{\beta}
+\end{align*}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Where we have used
+\begin_inset Formula 
+\begin{align*}
+d(t) & =\left(\frac{t+1}{\alpha}\right)^{\beta}-\left(\frac{t}{\alpha}\right)^{\beta}\\
+ & =\alpha^{-\beta}\left(\left(t+1\right)^{\beta}-t^{\beta}\right)\\
+ & =\Lambda(t+1)-\Lambda(t)
+\end{align*}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+Log-likelihood optimization with static variables
+\end_layout
+
+\begin_layout Standard
+and choosing a somewhat arbitrary function for the parameters, so that we
+ control the scaling a but, such as 
+\begin_inset Formula $\beta(X_{t})=e^{g(X_{t},\nu)}$
+\end_inset
+
+ where 
+\begin_inset Formula $\nu$
+\end_inset
+
+ symbolizes the model hyperparameters, so that we have our log-likelihood
+ represented in terms of data.
+ 
+\end_layout
+
+\begin_layout Standard
+The log-likelihood now presents itself as an optimization problem for machine
+ learning algorithms, and in order to do that, we compute the derivates;
+ the gradient and the hessian.
+\end_layout
+
+\begin_layout Standard
+The prediction in the implementation is then on 
+\begin_inset Formula $\hat{\beta}$
+\end_inset
+
+ and 
+\begin_inset Formula $\hat{\alpha}$
+\end_inset
+
+.
+ So how 
+\begin_inset Formula $X_{t}$
+\end_inset
+
+ affects the parameters is up to the model
+\end_layout
+
+\begin_layout Standard
+Gradients:
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+\text{Log}\left(L\right)\propto\delta\cdot\left[\beta\cdot\text{log}\left[\frac{t}{\alpha}\right]+\text{log}(\beta)\right]-\left(\frac{t}{\alpha}\right)^{\beta}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\begin{align*}
+\frac{\partial\text{Log}\left(L\right)}{\partial\beta} & =\delta\cdot\left[\text{log}\left[\frac{t}{\alpha}\right]+\beta^{-1}\right]-\text{log}\left(\frac{t}{\alpha}\right)\alpha^{-\beta}t^{\beta}\\
+ & =\delta\cdot\beta^{-1}+\text{log}\left(\frac{t}{\alpha}\right)\left(\delta-\alpha^{-\beta}t^{\beta}\right)
+\end{align*}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\begin{align*}
+\frac{\partial\text{Log}\left(L\right)}{\partial\alpha} & =-\delta\cdot\beta\cdot\alpha^{-1}+\beta\cdot t^{\beta}\alpha^{-\beta-1}\\
+ & =\beta\cdot\alpha^{-1}(t^{\beta}\alpha^{-\beta}-\delta)
+\end{align*}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Hessian:
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+\frac{\partial^{2}\text{Log}\left(L\right)}{\partial\beta^{2}}=-\delta\cdot\beta^{-2}-\text{log}\left(\frac{t}{\alpha}\right)^{2}\alpha^{-\beta}t^{\beta}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\begin{align*}
+\frac{\partial^{2}\text{Log}\left(L\right)}{\partial\alpha^{2}} & =\alpha^{-2}\beta\cdot\delta-\beta(\beta+1)\cdot t^{\beta}\alpha^{-\beta-2}\\
+ & =\alpha^{-2}\beta\cdot\left(\delta-(\beta-1)\cdot t^{\beta}\alpha^{-\beta}\right)
+\end{align*}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\begin{align*}
+\frac{\partial^{2}\text{Log}\left(L\right)}{\partial\alpha\partial\beta} & =-\delta\cdot\alpha^{-1}+t^{\beta}\alpha^{-\beta-1}+\beta\cdot\alpha^{-1}\frac{\partial e^{\beta\cdot\text{log}(\frac{t}{\alpha})}}{\partial\beta}\\
+ & =-\delta\cdot\alpha^{-1}+t^{\beta}\alpha^{-\beta-1}+\beta\cdot\alpha^{-\beta-1}\cdot\text{log}\left(\frac{t}{\alpha}\right)\\
+ & =\alpha^{-1}\left[-\delta+t^{\beta}\alpha^{-\beta}\left[1+\beta\cdot\text{log}\left(\frac{t}{\alpha}\right)\right]\right]
+\end{align*}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+In the discrete case, we won't write it out explicitly and shorten, we will
+ leave it as
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+\text{Log}(L_{d})\propto\delta\cdot\text{log}\left[e^{d(t)}-1\right]-\Lambda(t+1)
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\begin{align*}
+\frac{\partial\text{Log}\left(L_{d}\right)}{\partial\theta} & =\delta\cdot\frac{e^{d(t)}}{e^{d(t)}-1}\cdot\frac{\partial d(t)}{\partial\theta}-\frac{\partial\Lambda(t+1)}{\partial\theta}\\
+ & =\delta\cdot\frac{\Lambda_{\theta}(t+1)-\Lambda_{\theta}(t)}{1-e^{-d(t)}}-\Lambda_{\theta}(t+1)
+\end{align*}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\begin{align*}
+\frac{\partial^{2}\text{Log}\left(L_{d}\right)}{\partial\theta^{2}} & =MISSING\\
+ & =
+\end{align*}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Where 
+\begin_inset Formula $\Lambda_{\theta}$
+\end_inset
+
+ is short format denoting the partial derivative, and 
+\begin_inset Formula $\Lambda(t)=\left(\frac{t}{\alpha}\right)^{\beta}$
+\end_inset
+
+ as in the continuous case.
+\end_layout
+
+\begin_layout Standard
+And, at last, we could be replacing the parameters with their predictions,
+ so 
+\begin_inset Formula $\text{\hat{\beta}}=e^{g(X_{t},\nu)}$
+\end_inset
+
+ and 
+\begin_inset Formula $\text{\hat{\alpha}}=e^{h(X_{t},\nu)}$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+Discrete case time-varying covariates
+\end_layout
+
+\begin_layout Standard
+Things change a bit when we have time-varying covariates.
+ The survival in the log-likelihood becomes dependent on earlier states
+ for each individual, and is so harder to generalize across individual observati
+ons.
+ 
+\end_layout
+
+\begin_layout Standard
+In the static case, we had written:
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+\text{log}(L_{i})=\text{log}\left[f(t_{t})^{\delta}\cdot S_{i}(t_{t})^{1-\delta}\right]
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+But now the survival function is changing.
+ So now let's write some preliminaries.
+ First, the hazard rate is interpreted as an instantaneous risk at some
+ time point, but lets define probability of surviving beyond 
+\begin_inset Formula $t_{j}$
+\end_inset
+
+ given we have survived until 
+\begin_inset Formula $t_{j-1}$
+\end_inset
+
+ as (Step cumulative hazard function)
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\begin{align*}
+d(t_{j-1}) & =\text{P}\left(T\geq t_{j}|T\geq t_{j-1}\right)\\
+ & =F(t_{j})-F(t_{j-1})\\
+ & =e^{-\left(\frac{t_{j-1}+1}{\alpha}\right)^{\beta}}-e^{-\left(\frac{t_{j}+1}{\alpha}\right)^{\beta}}
+\end{align*}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The most important feature here being that we do not have to integreate
+ over the time path of the covariates of x, since they stay constant in
+ the duration interval.
+\end_layout
+
+\begin_layout Standard
+The survival function can't therefore be defined in parameters either, and
+ we must work from it being 
+\begin_inset Formula $S(t_{d})=1-F(t_{d})$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+But in order to also have 
+\begin_inset Formula $F(t_{d})$
+\end_inset
+
+, we define the probability that there will be at least 1 event within 
+\begin_inset Formula $s$
+\end_inset
+
+ time-steps as
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\begin{align*}
+\text{P}(t,s) & =\text{P}(T_{d}\leq t+s|T_{d}\geq t)\\
+ & =\text{P}(T\leq t+s+1|T\geq t)\\
+ & =1-e^{-\sum_{k=t}^{t+s}d(k)}
+\end{align*}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+And so also 
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+\text{P}(t,1)=d(t)
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+We can also likewise have a conditional excess probability mass function
+ as 
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\begin{align*}
+\text{p}(t,s) & =\text{P}(T_{d}=t+s|T_{d}\geq t)\\
+ & =S(t,s)-S(t,s+1)\\
+ & =e^{-\sum_{k=t}^{t+s}d(t)}(e^{d(t+s)}-1)
+\end{align*}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The survival function is (according to https://www.jstor.org/stable/2348028?seq=2#
+metadata_info_tab_contents and https://people.math.aau.dk/~rw/Undervisning/Duration
+Analysis/Slides/timedependent.pdf)
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+S(t_{d})=e^{-\sum_{j=1}^{K}d(t_{j}|X_{j-1})}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+and cumulative dist is
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+F(t_{d})=1-e^{-\sum_{j=1}^{K}d(t|X_{j-1})}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+It factors into the product of the conditional survivor functions, for non-overl
+apping but adjacent segments of time from duration 0 to 
+\begin_inset Formula $t_{j}$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+And so the log-likelihood can be written as
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\begin{align*}
+\text{log}(L_{i}) & =\text{log}\left[f(t_{t})^{\delta}\cdot S(t_{t})^{1-\delta}\right]\\
+ & =\text{log}\left[\left(e^{-\left(\frac{t}{\alpha_{i,j}}\right)^{\beta_{i,j}}}-e^{-\left(\frac{t+1}{\alpha_{i,j}}\right)^{\beta_{i,j}}}\right)^{\delta}\cdot e^{-(1-\delta)\cdot\sum_{j=1}^{K}d(t|X_{j-1})}\right]\\
+ & =\text{log}\left[\left(e^{-\left(\frac{t}{\alpha_{i,j}}\right)^{\beta_{i,j}}}-e^{-\left(\frac{t+1}{\alpha_{i,j}}\right)^{\beta_{i,j}}}\right)^{\delta}\cdot e^{-(1-\delta)\cdot\sum_{j=1}^{K}\left(\left(\frac{t_{j}}{\alpha_{i,j}}\right)^{\beta_{i,j}}-\left(\frac{t_{j-1}}{\alpha_{i,j}}\right)^{\beta_{i,j}}\right)}\right]
+\end{align*}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+And maybe not even simplify.
+ But we will instead actually use the more simplified version of log-likelihood,
+ as such:
+\end_layout
+
+\begin_layout Standard
+LEAVE THIS FOR LATER.
+ IT CAN BE DONE, BUT EASIER TO LOOK AT CONT.
+ CASE
+\end_layout
+
+\begin_layout Section
+Continuous case time-varying covariates
+\end_layout
+
+\begin_layout Standard
+Things change a bit when we have time-varying covariates.
+ The survival in the log-likelihood becomes dependent on earlier states
+ for each individual, and is so harder to generalize across individual observati
+ons.
+ 
+\end_layout
+
+\begin_layout Standard
+The loglikelihood is still written as
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+\text{Log}\left(L\right)=\text{log}\left[\lambda(t)^{\delta}\cdot e^{-\delta\left(\frac{t}{\alpha}\right)^{\beta}}\cdot S(t)^{1-\delta}\right]
+\]
+
+\end_inset
+
+But now the survival is dependent on the path of each individual, so we
+ stop suppressing the individual notation
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\begin{align*}
+\text{Log}\left(L_{i}\right) & =\text{log}\left[\lambda_{i}(t)^{\delta_{i}}\cdot e^{-\delta_{i}\left(\frac{t}{\alpha_{i}}\right)^{\beta_{i}}}\cdot S_{i}(t)^{1-\delta_{i}}\right]
+\end{align*}
+
+\end_inset
+
+The hazard rate, 
+\begin_inset Formula $\lambda_{i}(t)$
+\end_inset
+
+, and distribution, 
+\begin_inset Formula $f_{i}(t)$
+\end_inset
+
+, are the same, since they are given at one level of variables at one time.
+ We also still have the relation 
+\begin_inset Formula $F_{i}(t)=1-S_{i}(t)$
+\end_inset
+
+.
+ But now to get 
+\begin_inset Formula $S_{i}(t)$
+\end_inset
+
+ and also 
+\begin_inset Formula $\Lambda_{i}(t)$
+\end_inset
+
+ we integrate all over, so
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+S_{i}(t)=\int_{t}^{\inf}f(u)du
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\begin{align*}
+F_{i}(t) & =\int_{0}^{t}f(u)du
+\end{align*}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+\Lambda_{i}(t)=\int_{0}^{t}\lambda(u)du
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+But since our features are constant in the duration interval.
+ we do not have to integrate over the time path of the covariates of x.
+ We need a preliminary, our hazard rate is interpreted as an instantaneous
+ risk at some time point, but lets define probability of surviving beyond
+ 
+\begin_inset Formula $t_{j}$
+\end_inset
+
+ given we have survived until 
+\begin_inset Formula $t_{j-1}$
+\end_inset
+
+ as (Step cumulative hazard function)
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\begin{align*}
+d(t_{j}) & =\text{P}\left(T\geq t_{j}|T\geq t_{j-1}\right)\\
+ & =\Lambda(t_{j})-\Lambda(t_{j-1})\\
+ & =\int_{t_{j-1}}^{t_{j}}\lambda(u)du
+\end{align*}
+
+\end_inset
+
+and so we can write
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+\Lambda_{i}(t)=\sum_{k=0}^{t}d_{i}(k)
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+And we also have the relation
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+S_{i}(t)=e^{-\Lambda_{i}(t)}
+\]
+
+\end_inset
+
+And so the loglikelihood is
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\begin{align*}
+\text{Log}\left(L_{i}\right) & =\text{log}\left[\lambda_{i}(t)^{\delta_{i}}\cdot e^{-\delta_{i}\left(\frac{t}{\alpha_{i}}\right)^{\beta_{i}}}\cdot e^{-(1-\delta_{i})\Lambda_{i}(t)}\right]\\
+ & =\text{log}\left[\lambda_{i}(t)^{\delta_{i}}\cdot e^{-\delta_{i}\left(\frac{t}{\alpha_{i}}\right)^{\beta_{i}}}\cdot e^{-(1-\delta_{i})\sum_{j=0}^{K}\left(\Lambda(t_{j})-\Lambda(t_{j-1})\right)}\right]
+\end{align*}
+
+\end_inset
+
+Or we will actually simplify further first to
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\begin{align*}
+\text{log}(L_{i}) & =\delta\cdot\text{log}\left[\lambda_{i}(t)\right]-\Lambda_{i}(t)\\
+ & =\delta\cdot\text{log}\left[\lambda_{i}(t)\right]-\sum_{j=0}^{K}\left(d_{i}(t_{j})\right)
+\end{align*}
+
+\end_inset
+
+Now our problem becomes to make the hazard integral given by 
+\begin_inset Formula $d(t_{j-1})$
+\end_inset
+
+.
+ To do this correctly, we see that our problem actually is not non-trivial
+ dependence on 
+\begin_inset Formula $t$
+\end_inset
+
+ by the 
+\begin_inset Formula $X$
+\end_inset
+
+ matrix of the weibull parameters.
+ So that our integral is not from
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+\lambda(t)=\frac{\beta}{\alpha}\left(\frac{t}{\alpha}\right)^{\beta-1}
+\]
+
+\end_inset
+
+but
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+\lambda(t)=\frac{\beta(X_{t})}{\alpha(X_{t})}\left(\frac{t}{\alpha(X_{t})}\right)^{\beta(X_{t})-1}
+\]
+
+\end_inset
+
+Since 
+\begin_inset Formula $X_{t}$
+\end_inset
+
+ is a step-function in 
+\begin_inset Formula $t$
+\end_inset
+
+, and since we have split it up at the junctions, we can treat 
+\begin_inset Formula $X_{t}$
+\end_inset
+
+ as a constant.
+ By that argument, we get
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\begin{align*}
+d_{i}(t_{j}) & =\int_{t_{j-1}}^{t_{j}}\lambda_{i}(u)du\\
+ & =\left(\frac{t_{j}}{\alpha_{i}(X_{t_{j}})}\right)^{\beta_{i}(X_{t_{j}})}-\left(\frac{t_{j-1}}{\alpha_{i}(X_{t_{j}})}\right)^{\beta_{i}(X_{t_{j}})}
+\end{align*}
+
+\end_inset
+
+Which makes the log-likelihood look like this
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\begin{align*}
+\text{log}(L_{i}) & =\delta_{i}\cdot\text{log}\left[\lambda_{i}(t)\right]-\sum_{j=0}^{K}\left(d_{i}(t_{j})\right)\\
+ & =\delta_{i}\cdot\text{log}\left[\lambda_{i}(t)\right]-\sum_{j=0}^{K}\left(\left(\frac{t_{j}}{\alpha_{i}(X_{t_{j}})}\right)^{\beta_{i}(X_{t_{j}})}-\left(\frac{t_{j-1}}{\alpha_{i}(X_{t_{j}})}\right)^{\beta_{i}(X_{t_{j}})}\right)
+\end{align*}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+And supressing the dependence on 
+\begin_inset Formula $X_{i}$
+\end_inset
+
+ to ease notation
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+\text{log}(L_{i})=\delta_{i}\cdot\text{log}\left[\frac{\beta_{i}}{\alpha_{i}}\left(\frac{T}{\alpha_{i}}\right)^{\beta_{i}-1}\right]-\sum_{j=0}^{K}\left(\left(\frac{t_{j}}{\alpha_{i}}\right)^{\beta_{i}}-\left(\frac{t_{j-1}}{\alpha_{i}}\right)^{\beta_{i}}\right)
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Where 
+\begin_inset Formula $t_{K}=T$
+\end_inset
+
+.
+ Now we also simplify and find proportionality in arguments as in the continuous
+ and static case:
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+\text{log}(L_{i})\text{\ensuremath{\propto\delta_{i}\cdot\left[\beta_{i}\cdot\text{log}\left[\frac{T}{\alpha_{i}}\right]+\text{log}(\beta_{i})\right]-\sum_{j=0}^{K}\left(\left(\frac{t_{j}}{\alpha_{i}}\right)^{\beta_{i}}-\left(\frac{t_{j-1}}{\alpha_{i}}\right)^{\beta_{i}}\right)}}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\begin{align*}
+\frac{\partial\text{log}\left(L_{i}\right)}{\partial\beta_{i}} & =\delta_{i}\cdot\left[\text{log}\left[\frac{T}{\alpha_{i}}\right]+\beta_{i}^{-1}\right]-\sum_{j=0}^{K}\left(\text{log}\left(\frac{t_{j}}{\alpha_{i}}\right)\alpha_{i}^{-\beta_{i}}t_{j}^{\beta_{i}}-\text{log}\left(\frac{t_{j-1}}{\alpha_{i}}\right)\alpha_{i}^{-\beta_{i}}t_{j-1}^{\beta_{i}}\right)
+\end{align*}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\begin{align*}
+\frac{\partial\text{log}\left(L_{i}\right)}{\partial\alpha_{i}} & =-\delta_{i}\cdot\beta_{i}\cdot\alpha_{i}^{-1}+\sum_{j=0}^{K}\left(\beta_{i}\cdot t_{j}^{\beta_{i}}\alpha_{i}^{-\beta_{i}-1}-\beta_{i}\cdot t_{j-1}^{\beta_{i}}\alpha_{i}^{-\beta_{i}-1}\right)
+\end{align*}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Hessian:
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+\frac{\partial^{2}\text{log}\left(L_{i}\right)}{\partial\beta_{i}^{2}}=-\delta_{i}\cdot\beta_{i}^{-2}-\sum_{j=0}^{K}\left(\text{log}\left(\frac{t_{j}}{\alpha_{i}}\right)^{2}\alpha_{i}^{-\beta_{i}}t_{j}^{\beta_{i}}-\text{log}\left(\frac{t_{j-1}}{\alpha_{i}}\right)^{2}\alpha_{i}^{-\beta_{i}}t_{j-1}^{\beta_{i}}\right)
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\begin{align*}
+\frac{\partial^{2}\text{log}\left(L_{i}\right)}{\partial\alpha_{i}^{2}} & =\alpha_{i}^{-2}\beta_{i}\cdot\delta_{i}-\sum_{j=0}^{K}\left(\beta_{i}\cdot(\beta_{i}+1)\cdot t_{j}^{\beta_{i}}\alpha_{i}^{-\beta_{i}-2}-\beta_{i}\cdot(\beta_{i}+1)\cdot t_{j-1}^{\beta_{i}}\alpha_{i}^{-\beta_{i}-2}\right)
+\end{align*}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\begin{align*}
+\frac{\partial^{2}\text{log}\left(L_{i}\right)}{\partial\alpha_{i}\partial\beta_{i}} & =-\delta_{i}\cdot\alpha_{i}^{-1}+\sum_{j=0}^{K}\left(t_{j}^{\beta_{i}}\alpha_{i}^{-\beta_{i}-1}+\beta_{i}\cdot\alpha_{i}^{-1}\frac{\partial e^{\beta_{i}\cdot\text{log}(\frac{t_{j}}{\alpha_{i}})}}{\partial\beta_{i}}-\left(t_{j-1}^{\beta_{i}}\alpha_{i}^{-\beta_{i}-1}+\beta_{i}\cdot\alpha_{i}^{-1}\frac{\partial e^{\beta_{i}\cdot\text{log}(\frac{t_{j-1}}{\alpha_{i}})}}{\partial\beta_{i}}\right)\right)\\
+ & =-\delta_{i}\cdot\alpha_{i}^{-1}+\sum_{j=0}^{K}\left(t_{j}^{\beta_{i}}\alpha_{i}^{-\beta_{i}-1}+\beta_{i}\cdot\alpha_{i}^{-1}\text{log}(\frac{t_{j}}{\alpha_{i}})-\left(t_{j-1}^{\beta_{i}}\alpha_{i}^{-\beta_{i}-1}+\beta_{i}\cdot\alpha_{i}^{-1}\text{log}(\frac{t_{j-1}}{\alpha_{i}})\right)\right)
+\end{align*}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+To summarize
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\begin{align*}
+\frac{\text{\ensuremath{\partial}log}(L_{i})}{\partial\theta} & =\left[\begin{array}{c}
+\frac{\partial\text{log}\left(L_{i}\right)}{\partial\alpha_{i}}\\
+\frac{\partial\text{log}\left(L_{i}\right)}{\partial\beta_{i}}
+\end{array}\right]\\
+ & =\left[\begin{array}{c}
+-\delta_{i}\cdot\beta_{i}\cdot\alpha_{i}^{-1}+\sum_{j=0}^{K}\left(\beta_{i}\cdot t_{j}^{\beta_{i}}\alpha_{i}^{-\beta_{i}-1}-\beta_{i}\cdot t_{j-1}^{\beta_{i}}\alpha_{i}^{-\beta_{i}-1}\right)\\
+\delta_{i}\cdot\left[\text{log}\left[\frac{T}{\alpha_{i}}\right]+\beta_{i}^{-1}\right]-\sum_{j=0}^{K}\left(\text{log}\left(\frac{t_{j}}{\alpha_{i}}\right)\alpha_{i}^{-\beta_{i}}t_{j}^{\beta_{i}}-\text{log}\left(\frac{t_{j-1}}{\alpha_{i}}\right)\alpha_{i}^{-\beta_{i}}t_{j-1}^{\beta_{i}}\right)
+\end{array}\right]
+\end{align*}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\begin{align*}
+\frac{\text{\ensuremath{\partial^{2}}log}(L_{i})}{\partial\theta^{2}} & =\left[\begin{array}{cc}
+\frac{\partial^{2}\text{log}\left(L_{i}\right)}{\partial\alpha_{i}^{2}} & \frac{\partial^{2}\text{log}\left(L_{i}\right)}{\partial\alpha_{i}\partial\beta_{i}}\\
+\frac{\partial^{2}\text{log}\left(L_{i}\right)}{\partial\beta_{i}\partial\alpha_{i}} & \frac{\partial^{2}\text{log}\left(L_{i}\right)}{\partial\beta_{i}^{2}}
+\end{array}\right]\\
+ & =\left[\begin{array}{cc}
+\alpha_{i}^{-2}\beta_{i}\cdot\delta_{i}-\sum_{j=0}^{K}\left(\beta_{i}\cdot(\beta_{i}+1)\cdot t_{j}^{\beta_{i}}\alpha_{i}^{-\beta_{i}-2}-\beta_{i}\cdot(\beta_{i}+1)\cdot t_{j-1}^{\beta_{i}}\alpha_{i}^{-\beta_{i}-2}\right) & -\delta_{i}\cdot\alpha_{i}^{-1}+\sum_{j=0}^{K}\left(t_{j}^{\beta_{i}}\alpha_{i}^{-\beta_{i}-1}+\beta_{i}\cdot\alpha_{i}^{-1}\text{log}(\frac{t_{j}}{\alpha_{i}})-\left(t_{j-1}^{\beta_{i}}\alpha_{i}^{-\beta_{i}-1}+\beta_{i}\cdot\alpha_{i}^{-1}\text{log}(\frac{t_{j-1}}{\alpha_{i}})\right)\right)\\
+-\delta_{i}\cdot\alpha_{i}^{-1}+\sum_{j=0}^{K}\left(t_{j}^{\beta_{i}}\alpha_{i}^{-\beta_{i}-1}+\beta_{i}\cdot\alpha_{i}^{-1}\text{log}(\frac{t_{j}}{\alpha_{i}})-\left(t_{j-1}^{\beta_{i}}\alpha_{i}^{-\beta_{i}-1}+\beta_{i}\cdot\alpha_{i}^{-1}\text{log}(\frac{t_{j-1}}{\alpha_{i}})\right)\right) & -\delta_{i}\cdot\beta_{i}^{-2}-\sum_{j=0}^{K}\left(\text{log}\left(\frac{t_{j}}{\alpha_{i}}\right)^{2}\alpha_{i}^{-\beta_{i}}t_{j}^{\beta_{i}}-\text{log}\left(\frac{t_{j-1}}{\alpha_{i}}\right)^{2}\alpha_{i}^{-\beta_{i}}t_{j-1}^{\beta_{i}}\right)
+\end{array}\right]
+\end{align*}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+Properties of the weibull function with static variables.
+\end_layout
+
+\begin_layout Subsection
+Continuous case:
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+f(t)=\frac{\beta}{\alpha}\left(\frac{t}{\alpha}\right)^{\beta-1}e^{-\left(\frac{t}{\alpha}\right)^{\beta}}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+F(t)=1-e^{-\left(\frac{t}{\alpha}\right)^{\beta}}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+\Lambda(t)=\left(\frac{t}{\alpha}\right)^{\beta}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+S(t)=\left(\frac{t}{\alpha}\right)^{\beta-1}\cdot\frac{\beta}{\alpha}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+\lambda(t)=\frac{\beta}{\alpha}\left(\frac{t}{\alpha}\right)^{\beta-1}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+And so we have then mean as
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+E(f(t))=\alpha\Gamma(1+1/\beta)
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+and the median as 
+\begin_inset Formula 
+\[
+P_{50}(f(t))=\alpha(\text{ln}(2))^{1/\beta}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+and the mode as 
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+\begin{cases}
+\alpha\left(\frac{\beta-1}{\beta}\right)^{1/\beta} & \beta>1\\
+0 & \beta\leq1
+\end{cases}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection
+Discrete case:
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\begin{align*}
+\text{P}(T_{d}=t) & =\text{P}(t\leq T\leq t+1)\\
+ & =f(t_{d})\\
+ & =e^{-\left(\frac{t}{\alpha}\right)^{\beta}}-e^{-\left(\frac{t+1}{\alpha}\right)^{\beta}}
+\end{align*}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+F(t_{d})=1-e^{-\left(\frac{t+1}{\alpha}\right)^{\beta}}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+\Lambda(t_{d})=\left(\frac{t}{\alpha}\right)^{\beta}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+S(t_{d})=\left(\frac{t}{\alpha}\right)^{\beta-1}\cdot\frac{\beta}{\alpha}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\end_body
+\end_document
