@@ -8,6 +8,7 @@ from pydantic import (
     HttpUrl,
 )
 import pytz
+import torch
 
 LOCAL_TZ = pytz.timezone("Europe/Copenhagen")
 
@@ -21,3 +22,8 @@ MODEL_STAGE = "production"
 MLFLOW_URI = "https://mlflow.nuuday-ai.cloud/"
 TEST_SIZE=0.25
 SEED=42
+
+if torch.cuda.is_available():
+    DEVICE = torch.device("cuda")
+else:
+    DEVICE = torch.device("cpu")

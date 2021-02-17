@@ -9,6 +9,7 @@ import json
 import logging
 from functools import partial
 from typing import Tuple
+import datetime
 
 import torch
 import torch.nn as nn
@@ -18,8 +19,11 @@ import matplotlib.pyplot as plt
 from hyperopt import tpe, Trials, hp, fmin, STATUS_OK
 import mlflow
 
-from utils import utils, preprocessing_utils, evaluation_metrics
+from utils import utils, preprocessing_utils, model_utils
 from utils import wtte_torch
+from torch.utils.data import TensorDataset, DataLoader
+from survModelTorch import GRUNet
+
 import settings
 
 DATA_PATH = "data"
@@ -30,30 +34,71 @@ SEED = 42
 class survModel:
     def __init__(
         self,
+        params: model_utils.GRUparams,
         local: bool = False,
-        params: dict = {},
-        train_params: dict = {},
-        n_jobs: str=1,
         seed: int=42,
-        tune_params: bool=True
+        batch_size: int=1024,
     ):
-        self.local = local
-        self.n_jobs = n_jobs
-        self.seed = seed
         self.params = params
-        self.history = None
-        self.train_params = train_params
+        self.local = local
+        self.seed = seed
+        self.batch_size = batch_size
         mlflow.set_tracking_uri(uri=settings.MLFLOW_URI)
 
+    def fit(self, X: np.ndarray, y: np.ndarray, tune_hyperparams: bool=False, experiment_id: str=None):
+        def train_epoch(self, train_loader: DataLoader):
+            """Train one epoch of an RNN model"""
+            self.start_time = utils.time_now()
+            h = self.model.init_hidden(self.params.batch_size)
+            avg_loss = 0
+            counter = 0
+            for x, y in train_loader:
+                counter += 1
+                self.model.zero_grad()
+                h.detach_()
 
-    def fit(self, X: pd.DataFrame, y: pd.DataFrame, tune_params: bool=False, experiment_id: str=None):
-        raise NotImplementedError()
+                out, h = self.model(x.to(settings.DEVICE).float(), h)
+                loss = self.criterion(out, y.to(settings.DEVICE).float())
+                loss.backward()
+                self.optimizer.step()
+                avg_loss += loss.item()
+            return avg_loss #also return out, h?
+
+        def train_epochs(self, train_loader: DataLoader):
+            """Train epochs of an RNN model"""
+            epoch_times = []
+            # Start training loop
+            for epoch in range(1, self.params.epochs+1):
+                current_time = utils.time_now()
+                avg_loss = train_epoch(self, train_loader)
+                logging.info(f"Epoch {epoch}/{self.params.EPOCHS} Done, Total AvgNegLogLik: {avg_loss/len(train_loader)}")
+                logging.info(f"Total Time Elapsed: {str(current_time-self.start_time)} seconds")
+                epoch_times.append(current_time-self.start_time)
+            logging.info(f"Total Training Time: {str(sum(epoch_times, datetime.timedelta()))} seconds")
+
+        input_dim = X.shape[2]
+        output_dim = 2
+        train_data = TensorDataset(torch.from_numpy(X), torch.from_numpy(y))
+        train_loader = DataLoader(train_data, shuffle=True, batch_size=self.params.batch_size, drop_last=True)
+        
+        # run the training loop
+        if tune_hyperparams:
+            raise NotImplementedError()
+        else:
+            # TODO these won't show if I do tune hyperparams, since we would need to init model from within. Maybe output these
+            # in the tuning class fitting too. Or just pass them along not as model objects. and train_epoch and train_epochs should maybe be moved. Maybe to model_utils - 
+            # Could be in there as a WeibullGRUFitter class, which could be used also in the hyperparameter updater
+            self.model = GRUNet(settings.DEVICE, input_dim, self.params.hidden_dim, output_dim, self.params.n_layers).to(settings.DEVICE)
+            self.criterion = wtte_torch.torchWeibullLoss().loss
+            self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.params.learn_rate)
+            train_epochs(self, train_loader)
+
         if self.local:
             self.local_save(self.model, f"{MODELOBJ_PATH}/model.pickle")
             if tune_params:
                 self.local_save(self.params, f"{MODELOBJ_PATH}/model_config.pickle")
 
-    #def eval_loss(self, X, y):
+    #def eval_loss(self, X, y): # TODO replace this with just getting negloklik from wtte_torch
     #    if self.category_encoder:
     #        X = self.category_encoder.transform(X)
 #
@@ -128,7 +173,7 @@ class survModel:
         raise NotImplementedError()
         # plot at specific times difference
 
-        #evaluation_metrics.\
+        #model_utils.\
         #    plot_confusion_matrix(y, y_pred, threshold,
         #                          [0, 1],
         #                          title='Confusion matrix')
@@ -156,7 +201,6 @@ class GRUNet(nn.Module):
 
     def forward(self, x, h):
         out, h = self.gru(x, h)
-        #out = self.softplus(self.fc(self.relu(out[:,-1])))
         out = self.softplus(self.fc(out[:,-1]))
         return out, h
 

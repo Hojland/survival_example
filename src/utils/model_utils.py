@@ -1,14 +1,13 @@
-"""This module contains evaluation metrics for survival analysis
+"""This module contains model utils
 """
 
+from dataclasses import dataclass
 import numpy as np
+import pandas as pd
 from scipy.stats import norm
-
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-import pandas as pd
-import numpy as np
 from sklearn.metrics import explained_variance_score
 from sklearn.metrics import max_error
 from sklearn.metrics import mean_absolute_error
@@ -20,6 +19,14 @@ from sklearn.metrics import confusion_matrix
 from sklearn.metrics import roc_auc_score
 import matplotlib.pyplot as plt
 
+
+@dataclass
+class GRUparams:
+    """Class for keeping track of an params."""
+    epochs: int=300
+    learn_rate: float=1e-2
+    hidden_dim: int=20
+    n_layers: int=2
 
 def precision(cm):
     return cm[1, 1]/(cm[1, 1]+cm[0, 1])

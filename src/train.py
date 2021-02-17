@@ -1,5 +1,5 @@
-%load_ext autoreload
-%autoreload 2
+#%load_ext autoreload
+#%autoreload 2
 import pandas as pd
 import numpy as np
 import mlflow
@@ -10,19 +10,21 @@ import matplotlib.pyplot as plt
 import sqlalchemy
 import logging
 
-from utils import sql_utils, utils, plot_utils, evaluation_metrics, preprocessing_utils
-from survModel import survModel
+from utils import sql_utils, utils, plot_utils, model_utils, preprocessing_utils
+from survModelTorch import survModel
 import settings
 
 
 SQL_TABLE_NAME = "model_values"
 SQL_SCHEMA = "models"
-MODEL_NAME = "surv"
+MODEL_NAME = "mart-surv"
 DATASET_NAME = "../data/telco_cust_surv_churn.csv"
-
 
 def get_data():
     df = pd.read_csv(DATASET_NAME)
+    df['not_censored'] = 1 - df['censored']
+    df['t'] = df['stop'] - df['start']
+    df = df.drop(['start', 'stop', 'censored'], axis=1)
     return df
 
 def main():
@@ -30,22 +32,28 @@ def main():
 
     db_engine = sqlalchemy.create_engine('sqlite:///data/surv.db')
     df = get_data()
-
     logger.info("loading the model")
-    df = df.set_index('customerID')
-    X, y = preprocessing_utils.split_X_y(df, y_variables=['censored', 'start', 'stop'])
 
+    df = df.set_index(['customerID'])
+
+    X, y = preprocessing_utils.split_X_y(df, y_variables=['not_censored', 't'])
     X = pd.get_dummies(X)
 
     X_train, X_test, y_train, y_test = preprocessing_utils.train_test_split(X, y, settings.TEST_SIZE, settings.SEED)
-    
+    X_train, X_test, y_train, y_test = preprocessing_utils.to_cubes(X_train, X_test, y_train, y_test, max_seq_len=2)
 
-    logger.info("fitting the model")
-    experiment_id = mlflow.create_experiment(
-        f"mart-surv-3"
-    )
-    surv = survModel()
-    surv.fit(X=X_train, y=y_train, tune_params=False, experiment_id=experiment_id)
+    #from utils import wtte_torch
+    #alpha, beta = wtte_torch.weibull_baseline(t=y_train[:, 1, 1], u=y_train[:, 1, 0])
+
+    #wtte_torch.weibull_mean(alpha, beta)
+    #wtte_torch.plot_weibull_pdf(alpha, beta)
+
+    #logger.info("fitting the model")
+    #experiment_id = mlflow.create_experiment(
+    #    f"mart-surv-3"
+    #)
+    #surv = survModel()
+    #surv.fit(X=X_train, y=y_train, tune_params=False, experiment_id=experiment_id)
 
     logger.info("refitting the model to best params")
     with mlflow.start_run(experiment_id=experiment_id):
@@ -66,24 +74,24 @@ def main():
         mlflow.log_artifact(local_path="tmp_artifacts/shap_fig.svg")
 
         y_pred = surv.predict(x_test)
-        res, survival_auc_arr = evaluation_metrics.all_aft_evaluation_metrics(
-            y_train, y_test, y_pred
-        )
+
+        # TODO get metrics
         mlflow.log_metrics(res)
 
         xgboo.log_model(
-            artifact_path=f"obscure/mart-surv",
-            registered_model_name='mart-surv',
+            artifact_path=f"obscure/{MODEL_NAME}",
+            registered_model_name=MODEL_NAME,
         )
         os.system("rm -rf tmp_artifacts")
 
-    res["eval_loss"] = surv.eval_loss(x_test, y_test)
+    # TODO implement the eval loss
+    #res["eval_loss"] = surv.eval_loss(x_test, y_test)
 
     res.update(surv.params)
     res.update(
         {
             "time": utils.time_now().strftime("%Y-%m-%d"),
-            "model_name": 'mart-surv',
+            "model_name": MODEL_NAME,
         }
     )
     res = pd.DataFrame(res, index=[0])
@@ -97,3 +105,9 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+# TODO
+# and minmax scaler to model
+# add model training to model class
+# add hyperopt to hyperparameters
+# implement SHAP

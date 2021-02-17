@@ -26,7 +26,7 @@ class torchWeibullLoss:
     def loglik_continuous(self, t, u, a, b, epsilon=1e-10):
         """ Cumulative hazard
         :param t: time
-        :param u: censoring
+        :param u: non_censoring
         :param a: alpha
         :param b: beta
         :return: loglikelihood vector
@@ -39,8 +39,10 @@ class torchWeibullLoss:
         def ensure_pos(param, eps=.1e-4):
             param = torch.where(param > 0, param, torch.tensor([eps]))
             return param
-        a = ensure_pos(output[:, 0])
-        b = ensure_pos(output[:, 1])
+        #a = ensure_pos(output[:, 0])
+        a = output[:, 0]
+        #b = ensure_pos(output[:, 1])
+        b = output[:, 1]
         return a, b
 
     def extract_cens_time(self, target):

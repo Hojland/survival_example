@@ -50,7 +50,7 @@ jobs:
         id: changelog
         with:
           filename: null
-          tag: ${{ steps.version.outputs.new_tag }}
+          next_version: ${{ steps.version.outputs.new_version }}
 
       - name: "Github: Create release"
         uses: actions/create-release@v1

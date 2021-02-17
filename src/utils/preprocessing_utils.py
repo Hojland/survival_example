@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import os
+import torch
 #from sklearn import model_selection
 
 SEED = 42
@@ -57,3 +58,32 @@ def feature_engineering(df: pd.DataFrame):
 
 def postprocessing(df: pd.DataFrame, scale: bool = True):
     return df
+
+def pad_time(x: torch.Tensor, seq_len: int):
+    raise NotImplementedError()
+
+def to_cube(df: pd.DataFrame, max_seq_len: int=None) -> np.ndarray:
+    """Make an array cube from a Dataframe based on the index. So its (seq, id, val)
+
+    Args:
+        df: Dataframe
+
+    Returns:
+        multi-dimensional array
+    """
+    # id_dict = dict(zip(np.unique(df[id_col]), range(len(np.unique(df[id_col])))))
+    # df[id_col] = df[id_col].replace(id_dict) # maybe do with categories or just delete and not look back
+
+    cube = df.groupby(df.index).apply(lambda x: x.to_numpy()).to_list()
+    cube = np.stack(cube)
+
+    if max_seq_len:
+        # something about pad time. Maybe this has to be fixed before cubing
+        pass
+    return cube
+
+def to_cubes(*args, max_seq_len: int=None) -> np.ndarray:
+    cubes = []
+    for arg in args:
+        cubes.append(to_cube(arg, max_seq_len))
+    return tuple(cube for cube in cubes)
