@@ -1,7 +1,9 @@
 """This module contains model utils
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
+import logging
+import datetime
 import numpy as np
 import pandas as pd
 from scipy.stats import norm
@@ -19,6 +21,14 @@ from sklearn.metrics import confusion_matrix
 from sklearn.metrics import roc_auc_score
 import matplotlib.pyplot as plt
 
+import torch
+import torch.nn as nn
+from torch.utils.data import TensorDataset, DataLoader
+
+
+from utils import wtte_torch
+from utils import utils
+
 
 @dataclass
 class GRUparams:
@@ -27,6 +37,106 @@ class GRUparams:
     learn_rate: float=1e-2
     hidden_dim: int=20
     n_layers: int=2
+    batch_size: int = 1024
+    # TODO add fields with metadata to describe them
+    # TODO drop_prob should be here instead
+
+    def to_dict(self):
+        return asdict(self)
+
+class GRUNet(nn.Module):
+    def __init__(self, device, input_dim, hidden_dim, output_dim, n_layers, drop_prob=0.2):
+        super(GRUNet, self).__init__()
+        self.device = device
+        self.hidden_dim = hidden_dim
+        self.n_layers = n_layers
+        
+        self.gru = nn.GRU(input_dim, hidden_dim, n_layers, batch_first=True, dropout=drop_prob)
+        self.fc = nn.Linear(hidden_dim, output_dim)
+        #self.relu = nn.ReLU()
+        self.softplus = nn.Softplus()
+
+    def forward(self, x, h):
+        out, h = self.gru(x, h)
+        out = self.softplus(self.fc(out[:,-1]))
+        return out, h
+
+    def init_hidden(self, batch_size):
+        weight = next(self.parameters()).data
+        hidden = weight.new(self.n_layers, batch_size, self.hidden_dim).zero_().to(self.device)
+        return hidden
+
+class WeibullGRUFitter:
+    def __init__(self, device, input_dim, output_dim, params: GRUparams=GRUparams(), drop_prob=0.2):
+        self.params = params
+        self.device = device
+        self.model = GRUNet(device, input_dim, params.hidden_dim, output_dim, params.n_layers, drop_prob).to(device)
+        self.criterion = wtte_torch.torchWeibullLoss().loss
+        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=params.learn_rate)
+        self.avg_loss = []
+
+    def cv(self, X: np.ndarray, y: np.ndarray, n_folds: int=5):
+        from sklearn.model_selection import KFold
+        kf = KFold(n_splits=n_folds)
+        cv_results = {'val_loss': []}
+        for train_index, val_index in kf.split(X):
+            X_train, X_val = X[train_index], X[val_index]
+            y_train, y_val = y[train_index], y[val_index]
+            self.fit(X_train, y_train)
+            cv_results['val_loss'].append(self.val(X_val, y_val).cpu().detach().numpy())
+        return cv_results
+
+    def train_epoch(self, train_loader: DataLoader):
+        """Train one epoch of an RNN model"""
+        self.epoch_start_time = utils.time_now()
+        self.model.train()
+        h = self.model.init_hidden(self.params.batch_size)
+        loss_sum = 0
+        counter = 0
+        for X, y in train_loader:
+            counter += 1
+            self.model.zero_grad()
+            h.detach_()
+
+            out, h = self.model(X.to(self.device).float(), h)
+            loss = self.criterion(out, y.to(self.device).float())
+            loss.backward()
+            self.optimizer.step()
+            loss_sum += loss.item()
+        self.avg_loss.append(loss_sum/len(train_loader))
+
+    def fit(self, X: np.ndarray, y: np.ndarray):
+        """Train epochs of an RNN model"""
+        train_data = TensorDataset(torch.from_numpy(X), torch.from_numpy(y))
+        train_loader = DataLoader(train_data, shuffle=True, batch_size=self.params.batch_size, drop_last=True)
+
+        epoch_times = []
+        # Start training loop
+        for epoch in range(1, self.params.epochs+1):
+            current_time = utils.time_now()
+            self.train_epoch(train_loader)
+            if epoch%50 == 0:
+                logging.info(f"Epoch {epoch}/{self.params.epochs} Done, Total AvgNegLogLik: {self.avg_loss[-1]}")
+                logging.info(f"Total Time Elapsed: {str(current_time-self.epoch_start_time)} seconds")
+            epoch_times.append(current_time-self.epoch_start_time)
+        logging.info(f"Total Training Time: {str(sum(epoch_times, datetime.timedelta()))} seconds")
+
+    def val(self, X: np.ndarray, y: np.ndarray):
+        """ Gets losses from function """
+        self.model.eval()
+        with torch.no_grad():
+            out = self.predict(X)
+            val_loss = self.criterion(out, torch.from_numpy(y).to(self.device).float())
+        return val_loss
+
+    def predict(self, X: np.ndarray):
+        """ Does prediction """
+        self.model.eval()
+        with torch.no_grad():
+            h = self.model.init_hidden(X.shape[0])
+            out, _ = self.model(torch.from_numpy(X).to(self.device).float(), h)
+        return out
+
 
 def precision(cm):
     return cm[1, 1]/(cm[1, 1]+cm[0, 1])
@@ -52,6 +162,16 @@ def accuracy(cm):
 def auc_score(y_true, y_pred):
     return roc_auc_score(y_true, y_pred)
 
+#class PyTMinMaxScalerVectorized(object):
+#    """
+#    Transforms each channel to the range [0, 1].
+#    """
+#    def __call__(self, tensor):
+#        dist = (tensor.max(dim=1, keepdim=True)[0] - tensor.min(dim=1, keepdim=True)[0])
+#        dist[dist==0.] = 1.
+#        scale = 1.0 /  dist
+#        tensor.mul_(scale).sub_(tensor.min(dim=1, keepdim=True)[0])
+#        return tensor
 
 def root_mean_squared_error(y_true, y_pred):
     mse = mean_squared_error(y_true, y_pred)

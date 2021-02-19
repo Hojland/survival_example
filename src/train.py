@@ -37,7 +37,7 @@ def main():
     df = df.set_index(['customerID'])
 
     X, y = preprocessing_utils.split_X_y(df, y_variables=['not_censored', 't'])
-    X = pd.get_dummies(X)
+    X = pd.get_dummies(X, drop_first=True)
 
     X_train, X_test, y_train, y_test = preprocessing_utils.train_test_split(X, y, settings.TEST_SIZE, settings.SEED)
     X_train, X_test, y_train, y_test = preprocessing_utils.to_cubes(X_train, X_test, y_train, y_test, max_seq_len=2)
@@ -48,32 +48,32 @@ def main():
     #wtte_torch.weibull_mean(alpha, beta)
     #wtte_torch.plot_weibull_pdf(alpha, beta)
 
-    #logger.info("fitting the model")
-    #experiment_id = mlflow.create_experiment(
-    #    f"mart-surv-3"
-    #)
-    #surv = survModel()
-    #surv.fit(X=X_train, y=y_train, tune_params=False, experiment_id=experiment_id)
+    logger.info("fitting the model")
+    experiment_id = mlflow.create_experiment(
+        f"mart-surv-5"
+    )
+    surv = survModel()
+    surv.fit(X=X_train, y=y_train, tune_hyperparams=True, experiment_id=experiment_id)
 
     logger.info("refitting the model to best params")
     with mlflow.start_run(experiment_id=experiment_id):
         os.makedirs("tmp_artifacts", exist_ok=True)
-        surv.fit(X=x_train, y=y_train, tune_params=False)
+        surv.fit(X=X_train, y=y_train, tune_hyperparams=False)
         mlflow.set_tags({"lifecycle": "FINAL_RUN"})
         mlflow.log_params(surv.params)
-        fig = surv.explain(x_test)
+        fig = surv.explain(X_test)
         np.save("tmp_artifacts/shap_base_values", surv.explainer.expected_value)
         mlflow.log_artifact(local_path="tmp_artifacts/shap_base_values.npy",)
         np.save("tmp_artifacts/shap_values", surv.shap_values)
         mlflow.log_artifact(local_path="tmp_artifacts/shap_values.npy")
 
-        surv.shap_summary(x_test, show=False)
+        surv.shap_summary(X_test, show=False)
         fig = plt.gcf()
         fig.tight_layout()
         fig.savefig("tmp_artifacts/shap_fig.svg")
         mlflow.log_artifact(local_path="tmp_artifacts/shap_fig.svg")
 
-        y_pred = surv.predict(x_test)
+        y_pred = surv.predict(X_test)
 
         # TODO get metrics
         mlflow.log_metrics(res)
@@ -107,7 +107,7 @@ if __name__ == '__main__':
     main()
 
 # TODO
-# and minmax scaler to model
+# and minmax scaler to model. This should just be added to mlflow class
 # add model training to model class
 # add hyperopt to hyperparameters
 # implement SHAP

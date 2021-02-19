@@ -68,6 +68,21 @@ class torchWeibullLoss:
             loglik = - loglikelihoods
         return loglik
 
+# should these be torch functions?
+def weibull_expected_future_lifetime(t0, a, b):
+    def wolfram_inc_gamma(arg1, arg2):
+        from scipy.special import gammaincc, gamma
+        return gamma(arg1)*gammaincc(arg1, arg2)
+    cum_hazard_t0 = weibull_cumulative_hazard(t0, a, b)
+    exp_lifetime = (t0 * np.power(cum_hazard_t0, -1/b)) / ( np.exp(-cum_hazard_t0) * b) * wolfram_inc_gamma(
+        1 / b, cum_hazard_t0
+    )
+    return exp_lifetime
+
+def weibull_future_lifetime_quantiles(q, t0, a, b):
+    q_lifetime = a * (((t0 / a) ** b) - np.log(q)) ** (1 / b) - t0
+    return q_lifetime
+
 def weibull_cumulative_hazard(t, a, b):
     """ Cumulative hazard
     :param t: Value
