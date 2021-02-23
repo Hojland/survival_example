@@ -33,16 +33,22 @@ from utils import utils
 @dataclass
 class GRUparams:
     """Class for keeping track of an params."""
-    epochs: int=300
+    epochs: int=100
     learn_rate: float=1e-2
     hidden_dim: int=20
     n_layers: int=2
-    batch_size: int = 1024
-    # TODO add fields with metadata to describe them
-    # TODO drop_prob should be here instead
+    batch_size: int=1024
+    drop_prob: float=0.2
 
     def to_dict(self):
         return asdict(self)
+
+    def update(self, new):
+        for key, value in new.items():
+            if hasattr(self, key):
+                setattr(self, key, value)
+
+
 
 class GRUNet(nn.Module):
     def __init__(self, device, input_dim, hidden_dim, output_dim, n_layers, drop_prob=0.2):
@@ -53,7 +59,6 @@ class GRUNet(nn.Module):
         
         self.gru = nn.GRU(input_dim, hidden_dim, n_layers, batch_first=True, dropout=drop_prob)
         self.fc = nn.Linear(hidden_dim, output_dim)
-        #self.relu = nn.ReLU()
         self.softplus = nn.Softplus()
 
     def forward(self, x, h):
@@ -67,12 +72,19 @@ class GRUNet(nn.Module):
         return hidden
 
 class WeibullGRUFitter:
-    def __init__(self, device, input_dim, output_dim, params: GRUparams=GRUparams(), drop_prob=0.2):
+    def __init__(self, device, input_dim, output_dim, params: GRUparams=GRUparams()):
         self.params = params
         self.device = device
-        self.model = GRUNet(device, input_dim, params.hidden_dim, output_dim, params.n_layers, drop_prob).to(device)
+        self.model = GRUNet(device, input_dim, params.hidden_dim, output_dim, params.n_layers, params.drop_prob).to(device)
         self.criterion = wtte_torch.torchWeibullLoss().loss
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=params.learn_rate)
+        self.avg_loss = []
+
+    def update_params(self, params: dict):
+        self.params.update(params)
+
+    def reset(self):
+        """Reset values related to previous model runs"""
         self.avg_loss = []
 
     def cv(self, X: np.ndarray, y: np.ndarray, n_folds: int=5):
@@ -88,7 +100,6 @@ class WeibullGRUFitter:
 
     def train_epoch(self, train_loader: DataLoader):
         """Train one epoch of an RNN model"""
-        self.epoch_start_time = utils.time_now()
         self.model.train()
         h = self.model.init_hidden(self.params.batch_size)
         loss_sum = 0
@@ -107,19 +118,20 @@ class WeibullGRUFitter:
 
     def fit(self, X: np.ndarray, y: np.ndarray):
         """Train epochs of an RNN model"""
+        self.epoch_start_time = utils.time_now()
         train_data = TensorDataset(torch.from_numpy(X), torch.from_numpy(y))
         train_loader = DataLoader(train_data, shuffle=True, batch_size=self.params.batch_size, drop_last=True)
 
-        epoch_times = []
         # Start training loop
         for epoch in range(1, self.params.epochs+1):
-            current_time = utils.time_now()
             self.train_epoch(train_loader)
+            current_time = utils.time_now()
+            timed = current_time-self.epoch_start_time
+            time_str = utils.strfdelta(timed, "{minutes} minutes & {seconds} seconds")
             if epoch%50 == 0:
-                logging.info(f"Epoch {epoch}/{self.params.epochs} Done, Total AvgNegLogLik: {self.avg_loss[-1]}")
-                logging.info(f"Total Time Elapsed: {str(current_time-self.epoch_start_time)} seconds")
-            epoch_times.append(current_time-self.epoch_start_time)
-        logging.info(f"Total Training Time: {str(sum(epoch_times, datetime.timedelta()))} seconds")
+                logging.debug(f"Epoch {epoch}/{self.params.epochs} Done, Total AvgNegLogLik: {self.avg_loss[-1]}")
+                logging.debug(f"Total Time Elapsed: {time_str} seconds")
+        logging.info(f"Total Training Time For Fitting: {time_str} seconds")
 
     def val(self, X: np.ndarray, y: np.ndarray):
         """ Gets losses from function """

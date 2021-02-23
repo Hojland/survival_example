@@ -1,11 +1,10 @@
-#%load_ext autoreload
-#%autoreload 2
+%load_ext autoreload
+%autoreload 2
 import pandas as pd
 import numpy as np
 import mlflow
 import re
 import os
-import shap
 import matplotlib.pyplot as plt
 import sqlalchemy
 import logging
@@ -32,7 +31,6 @@ def main():
 
     db_engine = sqlalchemy.create_engine('sqlite:///data/surv.db')
     df = get_data()
-    logger.info("loading the model")
 
     df = df.set_index(['customerID'])
 
@@ -42,15 +40,9 @@ def main():
     X_train, X_test, y_train, y_test = preprocessing_utils.train_test_split(X, y, settings.TEST_SIZE, settings.SEED)
     X_train, X_test, y_train, y_test = preprocessing_utils.to_cubes(X_train, X_test, y_train, y_test, max_seq_len=2)
 
-    #from utils import wtte_torch
-    #alpha, beta = wtte_torch.weibull_baseline(t=y_train[:, 1, 1], u=y_train[:, 1, 0])
-
-    #wtte_torch.weibull_mean(alpha, beta)
-    #wtte_torch.plot_weibull_pdf(alpha, beta)
-
     logger.info("fitting the model")
     experiment_id = mlflow.create_experiment(
-        f"mart-surv-5"
+        f"mart-surv-9"
     )
     surv = survModel()
     surv.fit(X=X_train, y=y_train, tune_hyperparams=True, experiment_id=experiment_id)
@@ -58,7 +50,6 @@ def main():
     logger.info("refitting the model to best params")
     with mlflow.start_run(experiment_id=experiment_id):
         os.makedirs("tmp_artifacts", exist_ok=True)
-        surv.fit(X=X_train, y=y_train, tune_hyperparams=False)
         mlflow.set_tags({"lifecycle": "FINAL_RUN"})
         mlflow.log_params(surv.params)
         fig = surv.explain(X_test)
@@ -84,8 +75,7 @@ def main():
         )
         os.system("rm -rf tmp_artifacts")
 
-    # TODO implement the eval loss
-    #res["eval_loss"] = surv.eval_loss(x_test, y_test)
+    res["eval_loss"] = surv.eval_loss(X_test, y_test)
 
     res.update(surv.params)
     res.update(
@@ -108,6 +98,4 @@ if __name__ == '__main__':
 
 # TODO
 # and minmax scaler to model. This should just be added to mlflow class
-# add model training to model class
-# add hyperopt to hyperparameters
 # implement SHAP

@@ -250,3 +250,9 @@ def mode(x):
     Calculates a mode of a series from a group by operation
     """
     return np.nan if x.isnull().all() else x.value_counts().index[0]
+
+def strfdelta(tdelta: timedelta, fmt):
+    d = {"days": tdelta.days}
+    d["hours"], rem = divmod(tdelta.seconds, 3600)
+    d["minutes"], d["seconds"] = divmod(rem, 60)
+    return fmt.format(**d)

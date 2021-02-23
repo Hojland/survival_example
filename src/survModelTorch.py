@@ -1,7 +1,7 @@
 
 import numpy as np
 import pandas as pd
-import shap
+from captum.attr import GradientShap # could also include Shapley Value Sampling
 import os
 import re
 import pickle
@@ -31,50 +31,48 @@ class survModel:
         params: model_utils.GRUparams=model_utils.GRUparams(),
         local: bool = False,
         seed: int=42,
-        batch_size: int=1024,
     ):
         self.params = params
         self.local = local
         self.seed = seed
-        self.batch_size = batch_size
         mlflow.set_tracking_uri(uri=settings.MLFLOW_URI)
 
     def fit(self, X: np.ndarray, y: np.ndarray, tune_hyperparams: bool=False, experiment_id: str=None):
         input_dim = X.shape[2]
         output_dim = 2
 
+        self.model = WeibullGRUFitter(
+            device=settings.DEVICE,
+            input_dim=input_dim,
+            output_dim=output_dim,
+            params=self.params,
+        )
+
         # run the training loop
         if tune_hyperparams:
             tuner = torchAutotuner(
-                device=settings.DEVICE,
-                input_dim=input_dim,
-                output_dim=output_dim,
+                model=self.model,
+                max_evals=10,
                 experiment_id=experiment_id,
             )
             tuner.fit(X, y)
-            self.params = model_utils.GRUparams(**tuner.best_params) # TODO this could also need at set_params. Or sort of update function reminding of a dict
+            self.params.update(tuner.best_params)
+            logging.info("Refitting best parameters")
+            self.model.fit(X, y)
         else:
-            weib = WeibullGRUFitter(
-                device=settings.DEVICE,
-                input_dim=input_dim,
-                output_dim=output_dim,
-            )
-            weib.fit(X, y)
+            self.model.fit(X, y)
 
         if self.local:
             self.local_save(self.model, f"{MODELOBJ_PATH}/model.pickle")
-            if tune_params:
+            if tune_hyperparams:
                 self.local_save(self.params.to_dict(), f"{MODELOBJ_PATH}/model_config.pickle")
 
-    #def eval_loss(self, X, y): # TODO replace this with just getting negloklik from wtte_torch
-    #    if self.category_encoder:
-    #        X = self.category_encoder.transform(X)
-#
-    #    dtrain = xgb.DMatrix(X, y)
-    #    eval_res = self.model.eval(dtrain)
-    #    eval_name = re.search("(?<=\\t)([a-z-]*)(?<!:)", eval_res)
-    #    eval_loss = float(re.search("(?<=:)([\d\.]*)", eval_res)[0])
-    #    return eval_loss
+    def eval_loss(self, X, y):
+        if self.category_encoder:
+            X = self.category_encoder.transform(X)
+
+        eval_loss = self.model.eval(X, y)
+        return eval_loss
 
     def local_save(self, object, file_name):
         if "pickle" in file_name:
@@ -85,6 +83,14 @@ class survModel:
             print("format is not supported")
 
     def make_SHAP(self, X: pd.DataFrame, y: pd.DataFrame=None):
+        def get_baselines(X):
+            out = self.model.predict(X)
+            return out.mean(dim=0).repeat(out.shape[0], 1)
+        baselines = get_baselines(X)
+        explainer = GradientShap(self.model.model)
+        attribution = explainer.attribute(torch.Tensor(X), baselines=baselines, target=1)
+
+
         raise NotImplementedError()
         #explainer = shap.TreeExplainer(
         #    self.model,
@@ -155,7 +161,6 @@ class survModel:
         #                         max_display=max_display)
 
 
-# TODO change descriptions on this
 class torchAutotuner(object):
     """Uses hyperopt to perform a Bayesian optimazation of the hyper parameters of our churn model.
     Methods
@@ -163,13 +168,9 @@ class torchAutotuner(object):
     __init__(...) : Construct optimizer
     fit(X,y) : Perform optimization on data
     """
-    # TODO maybe bring model in there to reduce the number of these dims and stuff. Then add set set_params method to model obj
     def __init__(
         self,
-        device,
-        input_dim,
-        output_dim,
-        drop_prob=0.2,
+        model: WeibullGRUFitter,
         space: dict={},
         max_evals=100,
         n_folds=5,
@@ -180,6 +181,9 @@ class torchAutotuner(object):
         """Initiates instance of class
         Keyword Arguments:
                     Arguments:
+            model {[WeibullGRUFitter]} -- A model that has a reset and params with update function, 
+                                          that allows it to save additional values stored on the model object to run.
+                                          Furthermore, must have a cv method
             space {[type]} -- The parameter space of the TPE algorithm. If None,
                 a predefined space is used.
                 Needs to be defined using hyperopt.hp functions.  (default: {None})
@@ -189,25 +193,17 @@ class torchAutotuner(object):
             n_folds {int} -- Number of folds in cv. (default: {5})
             n_startup_jobs {int} -- Number of random search rounds prior to Bayes
                 optimization. (default: {30})
-            early_stopping_rounds {int} -- Activates early stopping. The model will train
-                until the validation score stops improving. Validation score needs to improve
-                at least every early_stopping_rounds round(s)
-                to continue training. (default: {500})
-            eval_metric {[type]} -- Evaluation metrics for optimization. If None,
-                than default metric for objective is used. (default: {None})
             experiment_id {str}: -- Id of the mlflow experiment if used 
         """
         self.experiment_id = experiment_id
-        self.device = device
-        self.input_dim = input_dim
-        self.output_dim = output_dim
-        self.drop_prob = drop_prob
+        self.model = model
         self.space = {
             "batch_size": 1024,
             "epochs": 300,
             "hidden_dim": hp.choice("hidden_dim", [5, 10, 20, 30]),
             "learn_rate": hp.loguniform("learn_rate", np.log(0.001), np.log(1)),
             "n_layers": hp.choice("n_layers", np.arange(1, 2)),
+            "drop_prob": hp.uniform('drop_prob', 0.1, 0.6)
         }
     
         # Setting inputs for TPE algorithm
@@ -229,7 +225,8 @@ class torchAutotuner(object):
     def fit(self, X, y):
         """Tune the parameters of predictor.
         Arguments:
-            dtrain {cudf.DataFrame} -- Training data
+            X {np.ndarray} -- Training independent variables
+            y {np.ndarray} -- Training dependent variables
         Attributes
         -------
         results : result summary from cv/optimization.
@@ -237,12 +234,13 @@ class torchAutotuner(object):
         best_score : best score from cv/optimization.
         """
 
-        # Get objective # TODO talk to idunn about why there is a lambda function here
+        # Get objective
         objective_function = lambda params: self._objective_function(
             X, y, 
             params,
             self.n_folds,
         )
+
         # Optimize model
         fmin(
             fn=objective_function,
@@ -255,9 +253,11 @@ class torchAutotuner(object):
         # Results ordered in descending order of performance
         results = sorted(self.bayes_trials.results, key=lambda x: x["loss"])
 
+        self.model.reset()
         self.results = results
         self.best_params = results[0]["params"]
         self.best_score = abs(results[0]["loss"])
+        self.model.params.update(self.best_params)
 
     def _objective_function(
         self, X, y, params, n_folds
@@ -265,18 +265,10 @@ class torchAutotuner(object):
         """Defines the objective function for the bayes optimization. """
         self.ITERATION += 1
 
-        #start_time = utils.time_now()
         # Perform n_folds cross validation
-        #mlflow.start_run(experiment_id=self.experiment_id)
-        params = model_utils.GRUparams(**params)
-        weib = WeibullGRUFitter(
-            device = self.device,
-            input_dim = self.input_dim,
-            output_dim = self.output_dim,
-            params = params,
-            drop_prob = self.drop_prob,
-        )
-        cv_results = weib.cv(
+        mlflow.start_run(experiment_id=self.experiment_id)
+        self.model.params.update(params)
+        cv_results = self.model.cv(
             X, y,
             n_folds=n_folds,
         )
@@ -284,13 +276,13 @@ class torchAutotuner(object):
         loss = np.mean(cv_results['val_loss'])
 
         # log mlflow metrics
-        #mlflow.log_metrics({"loss": loss})
-        #mlflow.log_params({**params.to_dict(), "num_boost_round": num_boost_round})
-        #mlflow.end_run()
+        mlflow.log_metrics({"loss": loss})
+        mlflow.log_params({**self.model.params.to_dict()})
+        mlflow.end_run()
 
         return {
             "loss": loss,
-            "params": params.to_dict(),
+            "params": self.model.params.to_dict(),
             "iteration": self.ITERATION,
             "status": STATUS_OK,
         }
