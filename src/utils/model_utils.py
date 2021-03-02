@@ -21,6 +21,12 @@ from sklearn.metrics import confusion_matrix
 from sklearn.metrics import roc_auc_score
 import matplotlib.pyplot as plt
 
+from sksurv.metrics import (
+    concordance_index_censored,
+    concordance_index_ipcw,
+    cumulative_dynamic_auc,
+)
+
 import torch
 import torch.nn as nn
 from torch.utils.data import TensorDataset, DataLoader
@@ -33,7 +39,7 @@ from utils import utils
 @dataclass
 class GRUparams:
     """Class for keeping track of an params."""
-    epochs: int=100
+    epochs: int=400
     learn_rate: float=1e-2
     hidden_dim: int=20
     n_layers: int=2
@@ -61,23 +67,26 @@ class GRUNet(nn.Module):
         self.fc = nn.Linear(hidden_dim, output_dim)
         self.softplus = nn.Softplus()
 
-    def forward(self, x, h):
-        out, h = self.gru(x, h)
+    def forward(self, X, h: torch.Tensor=None):
+        if torch.is_tensor(h) is False:
+            h = self.init_hidden(X.shape[0])
+        out, h = self.gru(X, h)
         out = self.softplus(self.fc(out[:,-1]))
-        return out, h
+        return out
 
     def init_hidden(self, batch_size):
         weight = next(self.parameters()).data
         hidden = weight.new(self.n_layers, batch_size, self.hidden_dim).zero_().to(self.device)
         return hidden
 
-class WeibullGRUFitter:
+class WeibullGRUFitter(GRUNet):
     def __init__(self, device, input_dim, output_dim, params: GRUparams=GRUparams()):
+        super().__init__(device, input_dim, params.hidden_dim, output_dim, params.n_layers, params.drop_prob)
         self.params = params
         self.device = device
-        self.model = GRUNet(device, input_dim, params.hidden_dim, output_dim, params.n_layers, params.drop_prob).to(device)
+        #self.model = GRUNet(device, input_dim, params.hidden_dim, output_dim, params.n_layers, params.drop_prob).to(device)
         self.criterion = wtte_torch.torchWeibullLoss().loss
-        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=params.learn_rate)
+        self.optimizer = torch.optim.Adam(self.parameters(), lr=params.learn_rate)
         self.avg_loss = []
 
     def update_params(self, params: dict):
@@ -100,16 +109,16 @@ class WeibullGRUFitter:
 
     def train_epoch(self, train_loader: DataLoader):
         """Train one epoch of an RNN model"""
-        self.model.train()
-        h = self.model.init_hidden(self.params.batch_size)
+        self.train()
+        #h = self.init_hidden(self.params.batch_size)
         loss_sum = 0
         counter = 0
         for X, y in train_loader:
             counter += 1
-            self.model.zero_grad()
-            h.detach_()
+            self.zero_grad()
+            #h.detach_()
 
-            out, h = self.model(X.to(self.device).float(), h)
+            out = self.forward(X.to(self.device).float())
             loss = self.criterion(out, y.to(self.device).float())
             loss.backward()
             self.optimizer.step()
@@ -135,7 +144,7 @@ class WeibullGRUFitter:
 
     def val(self, X: np.ndarray, y: np.ndarray):
         """ Gets losses from function """
-        self.model.eval()
+        self.eval()
         with torch.no_grad():
             out = self.predict(X)
             val_loss = self.criterion(out, torch.from_numpy(y).to(self.device).float())
@@ -143,12 +152,66 @@ class WeibullGRUFitter:
 
     def predict(self, X: np.ndarray):
         """ Does prediction """
-        self.model.eval()
+        self.eval()
         with torch.no_grad():
-            h = self.model.init_hidden(X.shape[0])
-            out, _ = self.model(torch.from_numpy(X).to(self.device).float(), h)
+            h = self.init_hidden(X.shape[0])
+            out = self.forward(torch.from_numpy(X).to(self.device).float(), h)
         return out
 
+def target_to_sksurv(duration: np.ndarray, event_indicator: np.ndarray):
+    event_indicator = event_indicator.astype(bool)
+    dtype = np.dtype([("event", event_indicator.dtype), ("time", duration.dtype)])
+    sksurv_array = np.empty(len(event_indicator), dtype=dtype)
+    sksurv_array["event"] = event_indicator
+    sksurv_array["time"] = duration
+    return sksurv_array
+
+def all_evaluation_metrics(
+    train_duration: np.ndarray,
+    train_event: np.ndarray,
+    test_duration: np.ndarray,
+    test_event: np.ndarray,
+    test_pred_risk: np.ndarray,
+):
+
+    survival_train = target_to_sksurv(train_duration, train_event)
+    survival_test = target_to_sksurv(test_duration, test_event)
+    
+    times = np.arange(
+        survival_test["time"].min().astype("int"), survival_test["time"].max().astype("int")
+    )
+
+    va_auc_arr, mean_auc = cumulative_dynamic_auc(
+        survival_train=survival_train,
+        survival_test=survival_test,
+        estimate=test_pred_risk,
+        times=times,
+        tied_tol=1e-6,
+    )
+    test_event = test_event.astype(bool)
+    c_harrell = concordance_index_censored(
+        event_indicator=test_event,
+        event_time=test_duration,
+        estimate=test_pred_risk,
+        tied_tol=1e-6,
+    )[0]
+
+    c_uno = concordance_index_ipcw(
+        survival_train=survival_train,
+        survival_test=survival_test,
+        estimate=test_pred_risk,
+        tau=None,
+        tied_tol=1e-6,
+    )[0]
+
+    res = {
+        "c_harrell": c_harrell,
+        "c_uno": c_uno,
+        "survival_auc_5_10_median": np.median(va_auc_arr[5:10]),
+        "survival_auc_10_30_median": np.median(va_auc_arr[10:30]),
+        "survival_auc_30_60_median": np.median(va_auc_arr[30:60]),
+    }
+    return res, va_auc_arr
 
 def precision(cm):
     return cm[1, 1]/(cm[1, 1]+cm[0, 1])
@@ -173,17 +236,6 @@ def accuracy(cm):
 
 def auc_score(y_true, y_pred):
     return roc_auc_score(y_true, y_pred)
-
-#class PyTMinMaxScalerVectorized(object):
-#    """
-#    Transforms each channel to the range [0, 1].
-#    """
-#    def __call__(self, tensor):
-#        dist = (tensor.max(dim=1, keepdim=True)[0] - tensor.min(dim=1, keepdim=True)[0])
-#        dist[dist==0.] = 1.
-#        scale = 1.0 /  dist
-#        tensor.mul_(scale).sub_(tensor.min(dim=1, keepdim=True)[0])
-#        return tensor
 
 def root_mean_squared_error(y_true, y_pred):
     mse = mean_squared_error(y_true, y_pred)

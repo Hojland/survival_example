@@ -1,7 +1,7 @@
 
 import numpy as np
 import pandas as pd
-from captum.attr import GradientShap # could also include Shapley Value Sampling
+from typing import Any
 import os
 import re
 import pickle
@@ -10,12 +10,15 @@ import logging
 from functools import partial
 from typing import Tuple
 import datetime
+import torch 
+import shap 
+import warnings
 
 import matplotlib.pyplot as plt
 from hyperopt import tpe, Trials, hp, fmin, STATUS_OK
 import mlflow
 
-from utils import utils, preprocessing_utils, model_utils
+from utils import utils, preprocessing_utils, model_utils, wtte_torch
 from utils.model_utils import WeibullGRUFitter
 
 import settings
@@ -31,10 +34,14 @@ class survModel:
         params: model_utils.GRUparams=model_utils.GRUparams(),
         local: bool = False,
         seed: int=42,
+        scaler: Any=None,
+        category_encoder: Any=None
     ):
         self.params = params
         self.local = local
         self.seed = seed
+        self.category_encoder = category_encoder
+        self.scaler = scaler
         mlflow.set_tracking_uri(uri=settings.MLFLOW_URI)
 
     def fit(self, X: np.ndarray, y: np.ndarray, tune_hyperparams: bool=False, experiment_id: str=None):
@@ -82,36 +89,34 @@ class survModel:
         else:
             print("format is not supported")
 
-    def make_SHAP(self, X: pd.DataFrame, y: pd.DataFrame=None):
-        def get_baselines(X):
-            out = self.model.predict(X)
-            return out.mean(dim=0).repeat(out.shape[0], 1)
-        baselines = get_baselines(X)
-        explainer = GradientShap(self.model.model)
-        attribution = explainer.attribute(torch.Tensor(X), baselines=baselines, target=1)
+    def shap_values(self, X: np.ndarray):
+        self.explainer = shap.DeepExplainer(self.model, torch.Tensor(X).to(settings.DEVICE))
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            shap_values = self.explainer.shap_values(torch.Tensor(X))
+        self.alpha_shap = shap_values[0]
+        self.beta_shap = shap_values[1]
 
-
-        raise NotImplementedError()
-        #explainer = shap.TreeExplainer(
-        #    self.model,
-        #    data=X,
-        #    model_output=model_output,
-        #    feature_dependence="independent",
-        #) KERNELEXPLAINER
-
-        #if self.local:
+        #if self.local: # should be saving to local db maybe?
         #    self.local_save(explainer, f"{MODELOBJ_PATH}/explainer.pickle")
         #    shap_values = explainer.shap_values(X, approximate=True)
         #    self.local_save(shap_values, f"{MODELOBJ_PATH}/shap_values.pickle")
 
+        return self.alpha_shap, self.beta_shap
+
     def log_model(self, **kwargs):
+        artifacts = {}
         if self.category_encoder:
             self._save_encoder(path="encoder.pkl")
-            mlflow.pyfunc.log_model(
-                **kwargs, python_model=self, artifacts={"encoder": "encoder.pkl"}
-            )
-        else:
-            mlflow.pyfunc.log_model(python_model=self, **kwargs)
+            artifacts['encoder'] = "encoder.pkl"
+
+        if self.scaler:
+            self._save_encoder(path="scaler.pkl")
+            artifacts['scaler'] = "scaler.pkl"
+        
+        mlflow.pyfunc.log_model(
+            **kwargs, python_model=self.model, artifacts=artifacts
+        )
 
     def _save_encoder(self, path="encoder.pkl"):
         with open(path, "wb") as f:
@@ -124,41 +129,35 @@ class survModel:
             pyfunc = mlflow.pyfunc.load_model(model_uri=f"models:/{model_name}/{model_stage}", **kwargs)
             artifacts = pyfunc._model_impl.context._artifacts
             self.model = pyfunc._model_impl.python_model.booster
-
+        
             if "encoder" in artifacts.keys():
                 with open(artifacts["encoder"], "rb") as f:
                     self.category_encoder = pickle.load(f)
+            if "scaler" in artifacts.keys():
+                with open(artifacts["scaler"], "rb") as f:
+                    self.scaler = pickle.load(f)
 
-    def print_performance(self, X: pd.DataFrame, y: pd.DataFrame, threshold: float=None):
-        raise NotImplementedError()
-        # performance metrics
+    def predict(self, X: np.ndarray):
+        return self.model.predict(X).numpy()
 
-    def plot_predictions(self, X: pd.DataFrame, y: pd.DataFrame):
-        raise NotImplementedError()
-        ## metrics
-#
-        #plt.scatter(y, y_pred)
-#
-        #plt.gca().set_aspect("equal", adjustable="box")
-#
-        #plt.show()
+    def future_expected_lifetime(self, X: np.ndarray, days_since_event: np.array=None):
+        if days_since_event is None:
+            days_since_event = np.zeros(len(X))
 
-    def plot_confusion_matrix(self, X: pd.DataFrame, y: pd.DataFrame, threshold: float):
-        raise NotImplementedError()
-        # plot at specific times difference
+        out = self.predict(X)
+        a, b = out[:, 0], out[:, 1]
+        # TODO vectorize this
+        return wtte_torch.weibull_expected_future_lifetime(t0=days_since_event, a=a, b=b)
 
-        #model_utils.\
-        #    plot_confusion_matrix(y, y_pred, threshold,
-        #                          [0, 1],
-        #                          title='Confusion matrix')
-        #return plt.show()
+    def future_lifetime_quantiles(self, X: np.ndarray, days_since_event: np.array=None, q: float=0.5):
+        if days_since_event is None:
+            days_since_event = np.zeros(len(X))
+        out = self.predict(X)
+        a, b = out[:, 0], out[:, 1]
+        return wtte_torch.weibull_future_lifetime_quantiles(q=q, t0=days_since_event, a=a, b=b)
 
-    def SHAP_summary(self, X: pd.DataFrame, max_display: int = None):
-        raise NotImplementedError()
-        # how should we reference and safe our stuff?
-        #return shap.summary_plot(self.shap_values,
-        #                         features=X,
-        #                         max_display=max_display)
+    def future_lifetime_mode(self, X: np.ndarray):
+        return NotImplementedError("This method is not yet implemented")
 
 
 class torchAutotuner(object):

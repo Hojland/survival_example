@@ -256,3 +256,17 @@ def strfdelta(tdelta: timedelta, fmt):
     d["hours"], rem = divmod(tdelta.seconds, 3600)
     d["minutes"], d["seconds"] = divmod(rem, 60)
     return fmt.format(**d)
+
+def find_binary(X: pd.DataFrame, get_difference: bool=False):
+    bin_cols = []
+    for i in range(X.shape[1]):
+        if len(np.unique(X.iloc[:, i])) == 2:
+            bin_cols.append(True)
+        else:
+            bin_cols.append(False)
+
+    if get_difference:
+        out = X.columns.difference(bin_cols)
+    else:
+        out = bin_cols
+    return out
