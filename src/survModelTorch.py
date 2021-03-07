@@ -11,12 +11,13 @@ from functools import partial
 from typing import Tuple
 import datetime
 import torch 
+from captum.attr import GradientShap
 import shap 
-import warnings
 
 import matplotlib.pyplot as plt
 from hyperopt import tpe, Trials, hp, fmin, STATUS_OK
 import mlflow
+import mlflow.pytorch
 
 from utils import utils, preprocessing_utils, model_utils, wtte_torch
 from utils.model_utils import WeibullGRUFitter
@@ -31,11 +32,12 @@ SEED = 42
 class survModel:
     def __init__(
         self,
+        feature_names: list,
         params: model_utils.GRUparams=model_utils.GRUparams(),
         local: bool = False,
         seed: int=42,
         scaler: Any=None,
-        category_encoder: Any=None
+        category_encoder: Any=None,
     ):
         self.params = params
         self.local = local
@@ -53,6 +55,8 @@ class survModel:
             input_dim=input_dim,
             output_dim=output_dim,
             params=self.params,
+            scaler=self.scaler,
+            category_encoder=self.category_encoder
         )
 
         # run the training loop
@@ -89,53 +93,25 @@ class survModel:
         else:
             print("format is not supported")
 
-    def shap_values(self, X: np.ndarray):
-        self.explainer = shap.DeepExplainer(self.model, torch.Tensor(X).to(settings.DEVICE))
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            shap_values = self.explainer.shap_values(torch.Tensor(X))
-        self.alpha_shap = shap_values[0]
-        self.beta_shap = shap_values[1]
-
-        #if self.local: # should be saving to local db maybe?
-        #    self.local_save(explainer, f"{MODELOBJ_PATH}/explainer.pickle")
-        #    shap_values = explainer.shap_values(X, approximate=True)
-        #    self.local_save(shap_values, f"{MODELOBJ_PATH}/shap_values.pickle")
-
-        return self.alpha_shap, self.beta_shap
+    def shap_values(self, X: np.ndarray, variable: str="alpha"):
+        if variable == "alpha":
+            var_idx = 0
+        elif variable == "beta":
+            var_idx = 1
+        explainer = GradientShap(self.model)
+        shap_values = explainer.attribute(torch.from_numpy(X).float(), torch.from_numpy(X).float(), target=var_idx)
+        return shap_values.numpy()
 
     def log_model(self, **kwargs):
-        artifacts = {}
-        if self.category_encoder:
-            self._save_encoder(path="encoder.pkl")
-            artifacts['encoder'] = "encoder.pkl"
-
-        if self.scaler:
-            self._save_encoder(path="scaler.pkl")
-            artifacts['scaler'] = "scaler.pkl"
-        
-        mlflow.pyfunc.log_model(
-            **kwargs, python_model=self.model, artifacts=artifacts
+        mlflow.pytorch.log_model( # TODO 
+            **kwargs, pytorch_model=self.model, conda_env='utils/resources/conda-env.json'
         )
-
-    def _save_encoder(self, path="encoder.pkl"):
-        with open(path, "wb") as f:
-            pickle.dump(self.category_encoder, f, protocol=pickle.HIGHEST_PROTOCOL)
 
     def load_model(self, model_name: str, model_stage: str, **kwargs):
         if self.local:
             self.model = pickle.load(open(f"{MODELOBJ_PATH}/model.pickle", "rb"))
         else:
-            pyfunc = mlflow.pyfunc.load_model(model_uri=f"models:/{model_name}/{model_stage}", **kwargs)
-            artifacts = pyfunc._model_impl.context._artifacts
-            self.model = pyfunc._model_impl.python_model.booster
-        
-            if "encoder" in artifacts.keys():
-                with open(artifacts["encoder"], "rb") as f:
-                    self.category_encoder = pickle.load(f)
-            if "scaler" in artifacts.keys():
-                with open(artifacts["scaler"], "rb") as f:
-                    self.scaler = pickle.load(f)
+            self.model = mlflow.pytorch.load_model(model_uri=f"models:/{model_name}/{model_stage}", **kwargs)
 
     def predict(self, X: np.ndarray):
         return self.model.predict(X).numpy()

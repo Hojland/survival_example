@@ -9,6 +9,7 @@ import pandas as pd
 from scipy.stats import norm
 import seaborn as sns
 import matplotlib.pyplot as plt
+from typing import Any
 
 from sklearn.metrics import explained_variance_score
 from sklearn.metrics import max_error
@@ -30,7 +31,6 @@ from sksurv.metrics import (
 import torch
 import torch.nn as nn
 from torch.utils.data import TensorDataset, DataLoader
-
 
 from utils import wtte_torch
 from utils import utils
@@ -80,14 +80,15 @@ class GRUNet(nn.Module):
         return hidden
 
 class WeibullGRUFitter(GRUNet):
-    def __init__(self, device, input_dim, output_dim, params: GRUparams=GRUparams()):
+    def __init__(self, device, input_dim, output_dim, params: GRUparams=GRUparams(), category_encoder: Any=None, scaler: Any=None):
         super().__init__(device, input_dim, params.hidden_dim, output_dim, params.n_layers, params.drop_prob)
         self.params = params
         self.device = device
-        #self.model = GRUNet(device, input_dim, params.hidden_dim, output_dim, params.n_layers, params.drop_prob).to(device)
         self.criterion = wtte_torch.torchWeibullLoss().loss
         self.optimizer = torch.optim.Adam(self.parameters(), lr=params.learn_rate)
         self.avg_loss = []
+        self.category_encoder = category_encoder
+        self.scaler = scaler
 
     def update_params(self, params: dict):
         self.params.update(params)

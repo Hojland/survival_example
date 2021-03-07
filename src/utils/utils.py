@@ -261,9 +261,9 @@ def find_binary(X: pd.DataFrame, get_difference: bool=False):
     bin_cols = []
     for i in range(X.shape[1]):
         if len(np.unique(X.iloc[:, i])) == 2:
-            bin_cols.append(True)
+            bin_cols.append(X.columns[i])
         else:
-            bin_cols.append(False)
+            pass
 
     if get_difference:
         out = X.columns.difference(bin_cols)
