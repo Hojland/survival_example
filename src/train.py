@@ -14,11 +14,11 @@ import matplotlib.font_manager as fm
 import sqlalchemy
 import logging
 from sklearn.preprocessing import Normalizer
+import category_encoders as ce
 
 from utils import sql_utils, utils, plot_utils, model_utils, preprocessing_utils
 from survModelTorch import survModel
 import settings
-
 
 SQL_TABLE_NAME = "model_values"
 SQL_SCHEMA = "models"
@@ -40,33 +40,43 @@ def main():
     df = get_data()
 
     df = df.set_index(['customerID'])
+    df[df['t']==0] = 1
 
     X, y = preprocessing_utils.split_X_y(df, y_variables=['not_censored', 't'])
-    X = pd.get_dummies(X, drop_first=True)
-    shap_X = X.copy()
-    shap_X['t'] = y['t']
+    
+    # target encoding
+    y_pred = preprocessing_utils.dur_model_target(y['t'], y['not_censored'])
+    cat_cols = list(X.select_dtypes(["category", "object"]).columns)
+    bin_cols = utils.find_binary(X[set(X) - set(cat_cols)], get_difference=False)
+    encode_cols = bin_cols + cat_cols
+    category_encoder = ce.TargetEncoder(cols=encode_cols)
+    category_encoder = category_encoder.fit(X, y_pred)
+    X = category_encoder.transform(X)
+
+    # Scale variables
+    index = X.index
     feature_names = list(X)
-    shap_X_feature_names = list(shap_X)    
+    scaler = Normalizer().fit(X)
+    X = pd.DataFrame(scaler.transform(X), columns=feature_names, index=index)
 
     X_train, X_test, y_train, y_test = preprocessing_utils.train_test_split(X, y, settings.TEST_SIZE, settings.SEED)
-
-    non_bin_cols = utils.find_binary(X, get_difference=True)
-    scaler = Normalizer().fit(X_train[non_bin_cols])
-    scaler.non_bin_cols = non_bin_cols
-    X_train[non_bin_cols] = scaler.transform(X_train[non_bin_cols])
-    X_test[non_bin_cols] = scaler.transform(X_test[non_bin_cols])
-
     X_train, X_test, y_train, y_test = preprocessing_utils.to_cubes(X_train, X_test, y_train, y_test, max_seq_len=2)
 
-    logger.info("fitting the model")
-    experiment_id = mlflow.create_experiment(
-        f"mart-surv-39"
-    )
-    params = model_utils.GRUparams(epochs=300, learn_rate=0.042678505501429896, hidden_dim=5, n_layers=1, batch_size=1024, drop_prob=0.15572706273371986)
-    surv = survModel(params=params, feature_names=feature_names, scaler=scaler)
-    surv.fit(X=X_train, y=y_train, tune_hyperparams=False, experiment_id=experiment_id)
+    # testing out just fully connected, remove in GRU!
+    y_train = y_train.reshape(y_train.shape[0]*y_train.shape[1], y_train.shape[2])
+    X_train = X_train.reshape(X_train.shape[0]*X_train.shape[1], X_train.shape[2])
+    y_test = y_test.reshape(y_test.shape[0]*y_test.shape[1], y_test.shape[2])
+    X_test = X_test.reshape(X_test.shape[0]*X_test.shape[1], X_test.shape[2])
 
-    # TODO change shap to a dataframe and add it so db
+    logger.info("fitting the model")
+    #experiment_id = mlflow.create_experiment(
+    #    f"mart-surv-47"
+    #)
+    params = model_utils.GRUparams(epochs=1000, learn_rate=0.42678505501429896, hidden_dim=5, n_layers=1, batch_size=1024, drop_prob=0.15572706273371986)
+    surv = survModel(params=params, feature_names=feature_names, scaler=scaler, category_encoder=category_encoder)
+    surv.params.update({"epochs": 1000, "hidden_dim": 12,  "n_layers": 1, 'learn_rate': 0.25678505501429896})
+    surv.fit(X=X_train, y=y_train, tune_hyperparams=False)
+
     logger.info("refitting the model to best params")
     with mlflow.start_run(experiment_id=experiment_id):
         os.makedirs("tmp_artifacts", exist_ok=True)
@@ -92,14 +102,9 @@ def main():
         fig.savefig("tmp_artifacts/beta_shap_fig.svg")
         mlflow.log_artifact(local_path="tmp_artifacts/beta_shap_fig.svg")
 
-        tmp = alpha_shap.transpose(1,0,2).reshape(alpha_shap.shape[0] * alpha_shap.shape[1], -1, order='F')
-        tmp = pd.DataFrame(tmp, columns=feature_names)
-        tmp['t'] = y_test[:,:,1].transpose(1,0,2)
-        #shap.initjs()
-        #shap.force_plot(explainer.expected_value[0], alpha_shap[:,-1,:], X[:,-1,:], feature_names=feature_names)
-        #shap.force_plot(explainer.expected_value[0], alpha_shap[0,-1,:], X[0,-1,:], feature_names=feature_names)
-
+        y_pred = surv.predict(X_test)
         y_pred = surv.future_lifetime_quantiles(X_test)
+        y_pred = surv.future_expected_lifetime(X_test, days_since_event=np.ones(len(X_test)))
         res, survival_auc_arr = model_utils.all_evaluation_metrics(
             y_train[:, -1, 1],
             y_train[:, -1, 0],

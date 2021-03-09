@@ -64,8 +64,15 @@ class GRUNet(nn.Module):
         self.n_layers = n_layers
         
         self.gru = nn.GRU(input_dim, hidden_dim, n_layers, batch_first=True, dropout=drop_prob)
+        self.fc0 = nn.Linear(input_dim, hidden_dim)
+        self.relu = nn.ReLU()
         self.fc = nn.Linear(hidden_dim, output_dim)
         self.softplus = nn.Softplus()
+
+    #def forward(self, X):
+    #    out = self.relu(self.fc0(X))
+    #    out = self.softplus(self.fc(out))
+    #    return out
 
     def forward(self, X, h: torch.Tensor=None):
         if torch.is_tensor(h) is False:
@@ -89,6 +96,7 @@ class WeibullGRUFitter(GRUNet):
         self.avg_loss = []
         self.category_encoder = category_encoder
         self.scaler = scaler
+        self.first_run = True
 
     def update_params(self, params: dict):
         self.params.update(params)
@@ -118,12 +126,13 @@ class WeibullGRUFitter(GRUNet):
             counter += 1
             self.zero_grad()
             #h.detach_()
-
             out = self.forward(X.to(self.device).float())
             loss = self.criterion(out, y.to(self.device).float())
             loss.backward()
             self.optimizer.step()
             loss_sum += loss.item()
+            print(f"loss.item() {loss.item()}")
+            self.first_run = False
         self.avg_loss.append(loss_sum/len(train_loader))
 
     def fit(self, X: np.ndarray, y: np.ndarray):
@@ -172,7 +181,7 @@ def all_evaluation_metrics(
     train_event: np.ndarray,
     test_duration: np.ndarray,
     test_event: np.ndarray,
-    test_pred_risk: np.ndarray,
+    test_pred: np.ndarray,
 ):
 
     survival_train = target_to_sksurv(train_duration, train_event)
@@ -185,7 +194,7 @@ def all_evaluation_metrics(
     va_auc_arr, mean_auc = cumulative_dynamic_auc(
         survival_train=survival_train,
         survival_test=survival_test,
-        estimate=test_pred_risk,
+        estimate=1/test_pred,
         times=times,
         tied_tol=1e-6,
     )
@@ -193,14 +202,14 @@ def all_evaluation_metrics(
     c_harrell = concordance_index_censored(
         event_indicator=test_event,
         event_time=test_duration,
-        estimate=test_pred_risk,
+        estimate=1/test_pred,
         tied_tol=1e-6,
     )[0]
 
     c_uno = concordance_index_ipcw(
         survival_train=survival_train,
         survival_test=survival_test,
-        estimate=test_pred_risk,
+        estimate=1/test_pred,
         tau=None,
         tied_tol=1e-6,
     )[0]

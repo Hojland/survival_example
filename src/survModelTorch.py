@@ -47,7 +47,7 @@ class survModel:
         mlflow.set_tracking_uri(uri=settings.MLFLOW_URI)
 
     def fit(self, X: np.ndarray, y: np.ndarray, tune_hyperparams: bool=False, experiment_id: str=None):
-        input_dim = X.shape[2]
+        input_dim = X.shape[-1]
         output_dim = 2
 
         self.model = WeibullGRUFitter(
@@ -103,7 +103,7 @@ class survModel:
         return shap_values.numpy()
 
     def log_model(self, **kwargs):
-        mlflow.pytorch.log_model( # TODO 
+        mlflow.pytorch.log_model(
             **kwargs, pytorch_model=self.model, conda_env='utils/resources/conda-env.json'
         )
 
@@ -118,16 +118,15 @@ class survModel:
 
     def future_expected_lifetime(self, X: np.ndarray, days_since_event: np.array=None):
         if days_since_event is None:
-            days_since_event = np.zeros(len(X))
+            days_since_event = np.zeros(len(X)) + 1e-06
 
         out = self.predict(X)
         a, b = out[:, 0], out[:, 1]
-        # TODO vectorize this
         return wtte_torch.weibull_expected_future_lifetime(t0=days_since_event, a=a, b=b)
 
     def future_lifetime_quantiles(self, X: np.ndarray, days_since_event: np.array=None, q: float=0.5):
         if days_since_event is None:
-            days_since_event = np.zeros(len(X))
+            days_since_event = np.zeros(len(X)) + 1e-06
         out = self.predict(X)
         a, b = out[:, 0], out[:, 1]
         return wtte_torch.weibull_future_lifetime_quantiles(q=q, t0=days_since_event, a=a, b=b)
@@ -137,7 +136,7 @@ class survModel:
 
 
 class torchAutotuner(object):
-    """Uses hyperopt to perform a Bayesian optimazation of the hyper parameters of our churn model.
+    """Uses hyperopt to perform a Bayesian optimization of the hyper parameters of our churn model.
     Methods
     --------
     __init__(...) : Construct optimizer
@@ -241,7 +240,8 @@ class torchAutotuner(object):
         self.ITERATION += 1
 
         # Perform n_folds cross validation
-        mlflow.start_run(experiment_id=self.experiment_id)
+        if self.experiment_id:
+            mlflow.start_run(experiment_id=self.experiment_id)
         self.model.params.update(params)
         cv_results = self.model.cv(
             X, y,
@@ -251,9 +251,10 @@ class torchAutotuner(object):
         loss = np.mean(cv_results['val_loss'])
 
         # log mlflow metrics
-        mlflow.log_metrics({"loss": loss})
-        mlflow.log_params({**self.model.params.to_dict()})
-        mlflow.end_run()
+        if self.experiment_id:
+            mlflow.log_metrics({"loss": loss})
+            mlflow.log_params({**self.model.params.to_dict()})
+            mlflow.end_run()
 
         return {
             "loss": loss,

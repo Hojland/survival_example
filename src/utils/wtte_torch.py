@@ -51,13 +51,14 @@ class torchWeibullLoss:
         return t, u
 
     def loss(self, output, target):
-        seq_len = output.shape[1]
-        loglikelihoods = torch.Tensor()
+        if len(target.shape) == 3:
+            # flattening stacks one on top of the other
+            target = target.flatten(end_dim=-2)
+            output = output.repeat(2, 1)
+            # output = output.repeat_interleave(2, 1)
         a, b = self.extract_parameters(output)
-        for seq in range(seq_len):
-            t, u = self.extract_cens_time(target[:, seq, :])
-            loglikelihoods_seq = self.loglik_continuous(t, u, a, b)
-            loglikelihoods = torch.cat((loglikelihoods, loglikelihoods_seq), 0)
+        t, u = self.extract_cens_time(target)
+        loglikelihoods = self.loglik_continuous(t, u, a, b)
         if self.clip_prob is not None:
             loglikelihoods = torch.clip(loglikelihoods, 
                 np.log(self.clip_prob), np.log(1 - self.clip_prob))
@@ -68,7 +69,6 @@ class torchWeibullLoss:
             loglik = - loglikelihoods
         return loglik
 
-# should these be torch functions?
 def weibull_expected_future_lifetime(t0, a, b):
     def wolfram_inc_gamma(arg1, arg2):
         from scipy.special import gammaincc, gamma
@@ -90,6 +90,7 @@ def weibull_cumulative_hazard(t, a, b):
     :param b: Beta
     :return: `np.power(t / a, b)`
     """
+    t = t
     t = np.double(t)
     return np.power(t / a, b)
 
@@ -224,32 +225,6 @@ def weibull_baseline(t: np.ndarray, u: np.ndarray):
     from lifelines import WeibullFitter
     wbf = WeibullFitter()
     wbf.fit(t, u)
-    wbf.plot()
+    #wbf.plot()
     alpha, beta = wbf.lambda_, wbf.rho_
     return alpha, beta
-
-def dur_model_target(pd_y_train: pd.DataFrame):
-    from lifelines import WeibullAFTFitter
-
-    y_train_lifelines = pd.DataFrame()
-    y_train_lifelines["duration"] = np.where(
-        pd_y_train["label_lower_bound"] == pd_y_train["label_upper_bound"],
-        pd_y_train["label_lower_bound"],
-        pd_y_train["label_lower_bound"],
-    )
-    y_train_lifelines["event"] = np.where(
-        pd_y_train["label_lower_bound"] == pd_y_train["label_upper_bound"], 1, 0
-    )
-    y_train_lifelines["duration"] = y_train_lifelines.where(y_train_lifelines["duration"] >= 1, 1)
-    dur_model = WeibullAFTFitter(penalizer=1.5e-3, l1_ratio=1.0).fit(
-        y_train_lifelines, duration_col="duration", event_col="event"
-    )
-    y_target_pred = dur_model.predict_median(
-        y_train_lifelines, conditional_after=y_train_lifelines["duration"]
-    )
-    y_target_comb = pd.Series(
-        np.where(
-            y_train_lifelines["event"].astype(bool), y_train_lifelines["duration"], y_target_pred
-        )
-    )
-    return y_target_comb

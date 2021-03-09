@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import os
 import torch
+from utils import wtte_torch
 #from sklearn import model_selection
 
 SEED = 42
@@ -87,3 +88,12 @@ def to_cubes(*args, max_seq_len: int=None) -> np.ndarray:
     for arg in args:
         cubes.append(to_cube(arg, max_seq_len))
     return tuple(cube for cube in cubes)
+
+def dur_model_target(duration: pd.Series, event: pd.Series):
+
+    a, b = wtte_torch.weibull_baseline(duration.values, event.values)
+    dur_pred = wtte_torch.weibull_future_lifetime_quantiles(q=0.5, t0=duration.values, a=a, b=b)
+    target = dur_pred + duration
+
+    target_comb = np.where(event.astype(bool), duration, target)
+    return target_comb
