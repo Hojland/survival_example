@@ -96,7 +96,6 @@ class WeibullGRUFitter(GRUNet):
         self.avg_loss = []
         self.category_encoder = category_encoder
         self.scaler = scaler
-        self.first_run = True
 
     def update_params(self, params: dict):
         self.params.update(params)
@@ -132,7 +131,6 @@ class WeibullGRUFitter(GRUNet):
             self.optimizer.step()
             loss_sum += loss.item()
             print(f"loss.item() {loss.item()}")
-            self.first_run = False
         self.avg_loss.append(loss_sum/len(train_loader))
 
     def fit(self, X: np.ndarray, y: np.ndarray):

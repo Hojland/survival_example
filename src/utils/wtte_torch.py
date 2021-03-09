@@ -52,10 +52,10 @@ class torchWeibullLoss:
 
     def loss(self, output, target):
         if len(target.shape) == 3:
-            # flattening stacks one on top of the other
+            # flattening stacks so our ids are on top of eachother
             target = target.flatten(end_dim=-2)
-            output = output.repeat(2, 1)
-            # output = output.repeat_interleave(2, 1)
+            #tmp_output = output.repeat(2, 1)
+            output = output.repeat_interleave(2, 0)
         a, b = self.extract_parameters(output)
         t, u = self.extract_cens_time(target)
         loglikelihoods = self.loglik_continuous(t, u, a, b)

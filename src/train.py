@@ -74,7 +74,7 @@ def main():
     #)
     params = model_utils.GRUparams(epochs=1000, learn_rate=0.42678505501429896, hidden_dim=5, n_layers=1, batch_size=1024, drop_prob=0.15572706273371986)
     surv = survModel(params=params, feature_names=feature_names, scaler=scaler, category_encoder=category_encoder)
-    surv.params.update({"epochs": 1000, "hidden_dim": 12,  "n_layers": 1, 'learn_rate': 0.25678505501429896})
+    surv.params.update({"epochs": 2000, "hidden_dim": 12,  "n_layers": 1, 'learn_rate': 0.25678505501429896})
     surv.fit(X=X_train, y=y_train, tune_hyperparams=False)
 
     logger.info("refitting the model to best params")
